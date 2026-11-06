@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import dataclasses
+import math
 from typing import Any, Optional
 
 try:  # imported as part of the plugin package (Hermes, harness)
@@ -120,39 +121,84 @@ def to_estimate(r: L1Result) -> Estimate:
     )
 
 
+def _solve_steps(target: float, start: float, g: float, o: float, h: float, warm: bool) -> float:
+    """Step count K whose projected total equals `target` (total is increasing in K)."""
+    lo, hi = 0.05, 5000.0
+    if project(lo, start, g, o, h, warm).total >= target:
+        return lo
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if project(mid, start, g, o, h, warm).total < target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
 def estimate(features: Any, state: Any = None) -> Estimate:
-    """Pre-task forecast. `features` is a `contracts.TaskFeatures` (a dict also works)."""
+    """Pre-task forecast. `features` is a `contracts.TaskFeatures` (a dict also works).
+
+    L1 rules → L2 history (if similar past tasks exist) → calibration (if enough
+    finished tasks exist).
+    """
     r = classify(features)
     idx = _resolve_index(state)
-    if idx is None:
-        return to_estimate(r)
 
-    neigh = idx.neighbours(message_of(features), r.task_type)
-    b = H.blend(neigh, r.steps_p50, r.steps_p90, r.growth, r.output_per_step, r.cache_hit)
-    if b is None:
-        return to_estimate(r)
+    # Draft: main-agent steps and shape, from L1 or L2.
+    k50, k90 = r.steps_p50, r.steps_p90
+    g, o, h = r.growth, r.output_per_step, r.cache_hit
+    layer, basis, confidence = "L1", r.basis, r.confidence
+    if idx is not None:
+        neigh = idx.neighbours(message_of(features), r.task_type)
+        b = H.blend(neigh, r.steps_p50, r.steps_p90, r.growth, r.output_per_step, r.cache_hit)
+        if b is not None:
+            k50, k90 = b.steps_p50, b.steps_p90
+            g, o, h = b.growth, b.output_per_step, b.cache_hit
+            layer = "L2"
+            basis = f"{b.n} similar past task{'s' if b.n != 1 else ''} (top sim {b.top_sim:.2f}, weight {b.lam:.2f}) + {r.basis}"
+            confidence = round(min(0.8, max(r.confidence, 0.25 + 0.5 * b.lam)), 2)
 
-    p50, p90 = H.reproject(b, r.start_prompt, r.warm_cache)
-    # Keep L1's subagent segments (delegated tasks) on top of the re-projected main agent.
-    main50 = project(r.steps_p50, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
-    main90 = project(r.steps_p90, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
-    extra50 = TokenSplit(*(max(0.0, a - m) for a, m in zip(_parts(r.tokens_p50), _parts(main50))))
-    extra90 = TokenSplit(*(max(0.0, a - m) for a, m in zip(_parts(r.tokens_p90), _parts(main90))))
+    # Subagent segments from L1 (delegated tasks) sit on top of the main agent.
+    l1main50 = project(r.steps_p50, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
+    l1main90 = project(r.steps_p90, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
+    extra50 = TokenSplit(*(max(0.0, a - m) for a, m in zip(_parts(r.tokens_p50), _parts(l1main50))))
+    extra90 = TokenSplit(*(max(0.0, a - m) for a, m in zip(_parts(r.tokens_p90), _parts(l1main90))))
 
-    basis = f"{b.n} similar past task{'s' if b.n != 1 else ''} (top sim {b.top_sim:.2f}, weight {b.lam:.2f}) + {r.basis}"
+    # Calibration: correct the P50 total for systematic bias and set the P90
+    # spread from past coverage, by moving the step counts so that `shape` and
+    # `projected_steps` (what the harness prices) stay consistent.
+    args = (r.start_prompt, g, o, h, r.warm_cache)
+    draft50 = project(k50, *args).total + extra50.total
+    draft90 = project(k90, *args).total + extra90.total
+    cal = idx.calibration() if idx is not None else None
+    if cal is not None and cal.active:
+        t50 = draft50 * math.exp(cal.bias(r.task_type))
+        t90 = t50 * math.exp(cal.spread(math.log(max(draft90, draft50 * 1.01) / draft50)))
+        k50 = _solve_steps(max(1.0, t50 - extra50.total), *args)
+        k90 = max(k50 * 1.05, _solve_steps(max(1.0, t90 - extra90.total), *args))
+        # layer_used keeps the contract's L1 | L2 | L3 values; calibration shows in basis.
+        basis = f"{basis}; {cal.describe(r.task_type)}"
+
+    p50 = project(k50, r.start_prompt, g, o, h, r.warm_cache) + extra50
+    p90 = project(k90, r.start_prompt, g, o, h, r.warm_cache) + extra90
+    shape = _shape_dict(r, g, o, h)
+    # Pre-calibration totals: calibration measures its bias against these, not
+    # against its own output (otherwise the correction would undo itself).
+    shape["draft_p50"] = round(draft50)
+    shape["draft_p90"] = round(draft90)
     return _build(
-        tier=H.tier_for_steps(b.steps_p50),
+        tier=H.tier_for_steps(k50),
         task_type=r.task_type,
-        tokens_p50=_tokens(p50 + extra50),
-        tokens_p90=_tokens(p90 + extra90),
+        tokens_p50=_tokens(p50),
+        tokens_p90=_tokens(p90),
         per_call_units=dict(r.per_call_units),
-        est_steps=round(b.steps_p50, 1),
-        est_steps_p90=round(b.steps_p90, 1),
-        confidence=round(min(0.8, max(r.confidence, 0.25 + 0.5 * b.lam)), 2),
+        est_steps=round(k50, 1),
+        est_steps_p90=round(k90, 1),
+        confidence=confidence,
         basis=basis,
-        layer_used="L2",
+        layer_used=layer,
         estimate_cost_usd=0.0,
-        shape=_shape_dict(r, b.growth, b.output_per_step, b.cache_hit),
+        shape=shape,
     )
 
 
@@ -202,6 +248,6 @@ def record_outcome(features: Any, estimate: Any, actual: Any, steps: int,
     if idx is None:
         return
     task_type = getattr(estimate, "task_type", None) or classify(features).task_type
-    rec = H.make_record(features, task_type, actual, steps, outcome)
+    rec = H.make_record(features, task_type, actual, steps, outcome, estimate)
     if rec is not None:
         idx.add(rec)

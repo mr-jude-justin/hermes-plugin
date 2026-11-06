@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from . import defaults as D
+from .calibration import Calibration
 from .features import approx_tokens, get, message_of
 from .textvec import cosine, document_frequency, hashed_counts, tfidf
 from .tokens import TokenSplit, project
@@ -61,7 +62,23 @@ def _usage_parts(actual: Any) -> tuple[float, float, float, float, float]:
     return inp, cr, cw, out, prompt
 
 
-def make_record(features: Any, task_type: str, actual: Any, steps: int, outcome: str) -> Optional[dict]:
+def _est_total(estimate: Any, name: str) -> float:
+    t = get(estimate, name, None) if estimate is not None else None
+    if t is None:
+        return 0.0
+    total = getattr(t, "total", None)
+    if total is None and isinstance(t, dict):
+        total = sum(float(t.get(k, 0) or 0) for k in ("input", "cache_read", "cache_write", "output"))
+    return float(total or 0)
+
+
+def _draft(estimate: Any, key: str) -> float:
+    shape = get(estimate, "shape", None) if estimate is not None else None
+    return float((shape or {}).get(key, 0) or 0)
+
+
+def make_record(features: Any, task_type: str, actual: Any, steps: int, outcome: str,
+                estimate: Any = None) -> Optional[dict]:
     counts = hashed_counts(message_of(features))
     k = int(steps or get(actual, "calls", 0) or 0)
     if not counts or k <= 0:
@@ -79,6 +96,12 @@ def make_record(features: Any, task_type: str, actual: Any, steps: int, outcome:
         "o": round(out / k, 1),
         "h": round(cr / (cr + inp), 4) if (cr + inp) > 0 else 0.0,
         "total": round(prompt + out),
+        # Launch estimate, for calibration (calibration.py): what was issued
+        # (coverage) and the pre-calibration draft (bias and spread).
+        "p50": round(_est_total(estimate, "tokens_p50")),
+        "p90": round(_est_total(estimate, "tokens_p90")),
+        "d50": round(_draft(estimate, "draft_p50") or _est_total(estimate, "tokens_p50")),
+        "d90": round(_draft(estimate, "draft_p90") or _est_total(estimate, "tokens_p90")),
         "outcome": outcome,
         "ts": time.time(),
     }
@@ -92,6 +115,7 @@ class L2Index:
         self._records: Optional[list[dict]] = None
         self._vecs: Optional[list[dict]] = None
         self._df: Any = None
+        self._cal: Optional[Calibration] = None
 
     @property
     def records(self) -> list[dict]:
@@ -103,6 +127,12 @@ class L2Index:
     def _invalidate(self) -> None:
         self._vecs = None
         self._df = None
+        self._cal = None
+
+    def calibration(self) -> "Calibration":
+        if self._cal is None:
+            self._cal = Calibration(self.records)
+        return self._cal
 
     def add(self, record: dict) -> None:
         recs = self.records
