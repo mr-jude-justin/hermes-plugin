@@ -43,7 +43,8 @@ def configure(state: Any, history: Any = None, llm: Any = None, l3_mode: str = "
     _index = H.L2Index(state) if state is not None else None
     _history = history
     _llm = llm
-    _l3_mode = l3_mode if l3_mode in ("auto", "always", "off") else "auto"
+    # Unknown values mean off: L3 costs money (YAML `off` reads back as False).
+    _l3_mode = L3.normalize_mode(l3_mode)
 
 
 def _resolve_index(state: Any) -> Optional[H.L2Index]:
@@ -181,7 +182,8 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
     use_llm = llm if llm is not None else _llm
     # The harness's llm carries a live `.mode`, so a settings change applies
     # without a restart; an explicit argument wins.
-    mode = l3_mode or getattr(use_llm, "mode", None) or _l3_mode
+    raw = l3_mode if l3_mode is not None else getattr(use_llm, "mode", _l3_mode)
+    mode = L3.normalize_mode(raw)
     if use_llm is not None and L3.should_run(mode, message_of(features), r.confidence, has_neighbours):
         guess = L3.ask(use_llm, features)
         if guess is not None:

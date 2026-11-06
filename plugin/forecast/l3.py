@@ -113,7 +113,15 @@ def parse(text: str, cost: Optional[float]) -> Optional[L3Guess]:
     )
 
 
+def normalize_mode(mode: Any) -> str:
+    """"auto" | "always" | "off". Anything else (None, False, "False", typos) is off,
+    because L3 spends the user's money."""
+    m = str(mode).strip().lower() if mode is not None else "off"
+    return m if m in ("auto", "always") else "off"
+
+
 def should_run(mode: str, message: str, l1_confidence: float, has_neighbours: bool) -> bool:
+    mode = normalize_mode(mode)
     if not message.strip() or mode == "off":
         return False
     if mode == "always":
