@@ -1,0 +1,22 @@
+name: cost-forecast
+version: 0.1.0
+description: Quotes a task's cost before it runs and stops for your OK when it would go over budget. API-key users only.
+author: Justin Zhuang, Eason Luo
+homepage: https://github.com/mr-jude-justin/hermes-plugin
+tags: [cost, budget, forecast]
+provides_hooks:
+  - pre_llm_call
+  - post_api_request
+  - api_request_error
+  - pre_tool_call
+  - post_tool_call
+  - subagent_start
+  - subagent_stop
+  - post_llm_call
+  - on_session_end
+config_schema:
+  enabled: {type: bool, default: true, label: "Enabled", description: "Turn quotes and budget stops on or off."}
+  quote_threshold_usd: {type: float, default: 0.5, label: "Quote above (USD)", description: "Ask before running a task whose likely cost is at least this much."}
+  task_cap_usd: {type: float, default: 3.0, label: "Per-task cap (USD)", description: "Pause for your OK when a task is projected to cost more."}
+  task_hard_limit_usd: {type: float, default: 10.0, label: "Per-task hard limit (USD)", description: "Stop a task at this spend. Approvals and /yolo cannot raise it; only your reply can."}
+  daily_cap_usd: {type: float, default: 20.0, label: "Daily cap (USD)", description: "Stop all tasks once today's spend reaches this."}
