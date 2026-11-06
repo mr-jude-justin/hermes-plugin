@@ -30,6 +30,18 @@ class TokenSplit:
     def total(self) -> float:
         return self.input + self.cache_read + self.cache_write + self.output
 
+    def __add__(self, other: TokenSplit) -> TokenSplit:
+        return TokenSplit(
+            self.input + other.input,
+            self.cache_read + other.cache_read,
+            self.cache_write + other.cache_write,
+            self.output + other.output,
+        )
+
+    def scaled(self, factor: float) -> TokenSplit:
+        f = float(factor)
+        return TokenSplit(self.input * f, self.cache_read * f, self.cache_write * f, self.output * f)
+
     def as_dict(self) -> dict[str, int]:
         return {
             "input": round(self.input),
