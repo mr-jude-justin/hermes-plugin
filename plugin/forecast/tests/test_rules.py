@@ -33,6 +33,9 @@ def tier_ge(a, b):
         ("explain how the auth module works in src/auth/login.py", {"cwd_is_git_repo": True}, "code_reasoning"),
         ("帮我把这个项目重构成插件架构", {"cwd_is_git_repo": True}, "agentic_coding"),
         ("fix the failing tests and add a test for the parser", {"cwd_is_git_repo": True}, "agentic_coding"),
+        # Justin's first live run was classified as chat:
+        ("write a fib script, save and run it", {}, "agentic_coding"),
+        ("write me a python program that renames photos", {}, "agentic_coding"),
         ("调研一下 2026 年最新的 agent 成本预测论文", {}, "research"),
         ("search for the latest news on hermes agent plugins", {}, "research"),
         ("帮我画三张猫的头像", {}, "generation"),
@@ -64,6 +67,14 @@ def test_refactor_whole_repo_is_big():
     )
     assert r.task_type == "agentic_coding"
     assert r.tier == "XL"
+
+
+def test_standalone_script_is_small():
+    # Justin's live run: this took 2 API calls on Hermes.
+    r = classify(feat("write a fib script, save and run it"))
+    assert r.task_type == "agentic_coding" and r.tier == "S"
+    # The same ask inside a repo stays bigger.
+    assert TIERS.index(classify(feat("write a fib script, save and run it", cwd_is_git_repo=True)).tier) > 0
 
 
 def test_small_fix_is_downgraded():

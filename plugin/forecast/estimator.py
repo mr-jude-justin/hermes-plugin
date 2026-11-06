@@ -19,6 +19,7 @@ except ImportError:  # imported as top-level `forecast` (forecast tests)
 
 from . import defaults as D
 from . import history as H
+from . import midtask as RF
 from .features import message_of
 from .rules import L1Result, classify
 from .tokens import TokenSplit, project, step_splits
@@ -78,6 +79,8 @@ def projected_steps(estimate: Any, which: str = "p50") -> list[Tokens]:
     if not shape:
         return []
     k = estimate.est_steps if which == "p50" else estimate.est_steps_p90
+    # A reforecast's shape covers only the calls still to come.
+    k = max(0.0, k - float(shape.get("steps_done", 0) or 0))
     splits = step_splits(k, shape["start_prompt"], shape["growth"], shape["output_per_step"],
                          shape["cache_hit"], bool(shape.get("warm_cache")))
     sub = shape.get("subagents")
@@ -150,6 +153,34 @@ def estimate(features: Any, state: Any = None) -> Estimate:
         layer_used="L2",
         estimate_cost_usd=0.0,
         shape=_shape_dict(r, b.growth, b.output_per_step, b.cache_hit),
+    )
+
+
+def reforecast(features: Any, original: Any, spent: Any, steps_done: int,
+               recent_steps: Optional[list] = None) -> Estimate:
+    """Mid-task forecast of the final total (spent + remaining).
+
+    `tokens_p50/p90` include what is already spent and never drop below it.
+    `shape` and `projected_steps(...)` cover only the remaining calls, so the
+    harness prices those and adds `spent.cost_usd`.
+    """
+    p = RF.reforecast_parts(features, original, spent, steps_done, recent_steps or [])
+    k50 = p["steps_done"] + p["rem_p50"]
+    k90 = p["steps_done"] + p["rem_p90"]
+    conf0 = float(getattr(original, "confidence", 0.3) or 0.3)
+    return _build(
+        tier=H.tier_for_steps(k50),
+        task_type=p["task_type"],
+        tokens_p50=_tokens(p["tokens_p50"]),
+        tokens_p90=_tokens(p["tokens_p90"]),
+        per_call_units=dict(getattr(original, "per_call_units", {}) or {}),
+        est_steps=round(k50, 1),
+        est_steps_p90=round(k90, 1),
+        confidence=round(min(0.9, conf0 + (0.9 - conf0) * p["progress"]), 2),
+        basis="reforecast: " + ", ".join(p["signals"]),
+        layer_used="reforecast",
+        estimate_cost_usd=0.0,
+        shape=p["shape"],
     )
 
 
