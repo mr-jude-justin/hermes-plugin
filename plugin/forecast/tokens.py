@@ -51,6 +51,39 @@ class TokenSplit:
         }
 
 
+def step_splits(
+    steps: float,
+    start_prompt: float,
+    growth: float,
+    output_per_step: float,
+    cache_hit: float,
+    warm_cache: bool = False,
+) -> list[TokenSplit]:
+    """The same model as `project`, one TokenSplit per call (for per-call pricing).
+
+    A fractional last step is scaled by its fraction. For integer `steps` the
+    sum equals `project(...)` exactly.
+    """
+    k = max(0.0, float(steps))
+    l1 = max(0.0, float(start_prompt))
+    g = max(0.0, float(growth))
+    o = max(0.0, float(output_per_step))
+    h = min(1.0, max(0.0, float(cache_hit)))
+    out: list[TokenSplit] = []
+    j = 1
+    while j - 1 < k:
+        frac = min(1.0, k - (j - 1))
+        lj = l1 + g * (j - 1)
+        if h == 0.0:
+            s = TokenSplit(lj, 0.0, 0.0, o)
+        else:
+            prefix = (l1 if warm_cache else 0.0) if j == 1 else l1 + g * (j - 2)
+            s = TokenSplit((1 - h) * prefix, h * prefix, lj - prefix, o)
+        out.append(s.scaled(frac) if frac < 1.0 else s)
+        j += 1
+    return out
+
+
 def project(
     steps: float,
     start_prompt: float,
