@@ -228,3 +228,10 @@ def test_round_up_keeps_two_significant_digits(x, expected):
 def test_small_amounts_display():
     from harness.messages import usd
     assert (usd(0.005), usd(0.0204), usd(0.5), usd(12.4)) == ("$0.005", "$0.020", "$0.50", "$12")
+
+
+@pytest.mark.parametrize("raw,mode", [(False, "off"), ("False", "off"), ('"off"', "off"), ("auto", "auto"),
+                                      ("ALWAYS", "always"), ("bogus", "off"), (True, "off")])
+def test_l3_mode_is_normalized(raw, mode):
+    s = Settings.from_getter(lambda key, default=None: raw if key == "l3_mode" else default)
+    assert s.l3_mode == mode

@@ -44,7 +44,7 @@ Only short replies count as answers. A sentence like "ok, but only change the fi
 
 ## Settings
 
-Change these in Hermes Desktop under **Settings → Plugins → cost-forecast**, or with `hermes config set plugins.entries.cost-forecast.settings.<key> <value>`.
+Change these in Hermes Desktop under **Settings → Plugins → cost-forecast**, or with `hermes config set plugins.entries.cost-forecast.settings.<key> <value>`. From the command line, quote `off` (`'"off"'`), because YAML reads a bare `off` as false. The plugin treats false as off anyway.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -97,9 +97,14 @@ If Hermes is signed in with your Claude subscription:
 Check how Hermes is signed in with `hermes auth list anthropic`. To switch to an API key:
 
 ```bash
-hermes auth logout anthropic
-hermes auth add anthropic --api-key <your Anthropic Console key>
+hermes config set auth.adopt_external_logins false   # stop Hermes from borrowing Claude Code's login
+hermes auth logout anthropic                          # remove the subscription sign-in
+hermes auth add anthropic --type api-key              # paste the key at the prompt
+hermes config set model.provider anthropic            # "auto" does not pick up a key added this way
+hermes auth list anthropic                            # should list one api_key and no oauth entries
 ```
+
+Removing the subscription sign-in is not enough on its own. By default Hermes adopts your Claude Code login as a backup credential, and it switches to that login when the API key gets a 401 or 429 error, such as when your balance runs out. You get no notice when this happens. `auth.adopt_external_logins false` turns this off.
 
 ## Limits
 

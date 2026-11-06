@@ -60,7 +60,15 @@ class Settings:
                 setattr(s, f, type(getattr(s, f))(value))
             except Exception:
                 pass
+        s.l3_mode = _l3_mode(s.l3_mode)
         return s
+
+
+def _l3_mode(value: Any) -> str:
+    """`hermes config set ... l3_mode off` stores YAML false, which reads back as "False".
+    Anything that is not clearly auto or always means off, since L3 costs money."""
+    v = str(value).strip().strip('"\'').lower()
+    return v if v in ("auto", "always") else "off"
 
 
 @dataclass
