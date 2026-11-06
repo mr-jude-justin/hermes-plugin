@@ -27,9 +27,27 @@ The plugin works in four steps:
 3. **Stop before going over budget.** Budget checks run before each tool call:
    - **Soft cap:** when the projected total goes over the cap, Hermes pauses the task and asks for approval (on Discord, for example, with **Allow Once** / **Deny** buttons). If you allow it, the cap goes up and the task continues where it stopped.
    - **Hard limit and daily cap:** the task stops. Only your reply (**continue** or **cap $N**) lifts the limit. `/yolo` cannot skip it.
-4. **Learn from your history.** When a task finishes, its real cost is compared with the estimate. The next estimate for similar work uses your own history, so the quotes get more accurate the more you use the plugin.
+4. **Learn from your history.** When a task finishes, its real cost is compared with the estimate. The next estimate for similar work uses your own history, so the quotes get more accurate the more you use the plugin. See [It learns from your own tasks](#it-learns-from-your-own-tasks).
 
 How the estimate is built (rules, similar past tasks, calibration) is described in `forecast/DESIGN.md`.
+
+## It learns from your own tasks
+
+Every finished task is recorded with its estimate and its real cost. The plugin learns from these records in three ways:
+
+- **Similar past tasks.** For a new request, it finds the most similar tasks you have already run. It reuses how many model calls they really took and how large each call was. It reuses shapes, not dollar amounts, so the history still applies after you switch models. Text similarity uses hashed word counts; the message text itself is never stored.
+- **Calibration.** After 3 finished tasks, it measures how far its estimates run high or low for *you*, corrects for that, and widens or narrows the range so that about 9 in 10 tasks land under the high-end (P90) figure. The quote shows the result, for example "calibrated x0.54 (n=13)": your tasks have been costing about 54% of the default estimate.
+- **The cheap model's bias.** If the cheap-model estimate is on (`l3_mode`), it learns how much that model tends to underestimate steps and corrects for it.
+
+During a task it also corrects itself live: after every model call, it re-estimates the remaining cost from how fast this task is actually growing.
+
+In testing, a 30-file task was first quoted at $0.01–$0.02 and actually cost $0.053. After that one run, the same request was quoted at $0.011–$0.14.
+
+What it does **not** do:
+
+- **It does not change its own code or rules.** The rules and default settings change only with a new plugin release, which you install through the catalog.
+- **It does not learn across users.** Each user's records stay in their own `<HERMES_HOME>/plugin-data/cost-forecast/` and are never uploaded. A new user starts from the defaults, so the first few quotes are the least accurate.
+- **It does not learn costs from declined quotes.** Those only help set when a quote should appear.
 
 ## Replying to a quote
 
