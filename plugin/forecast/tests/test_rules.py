@@ -80,7 +80,7 @@ def test_standalone_script_is_small():
 def test_small_fix_is_downgraded():
     r = classify(feat("quick typo fix in README.md", cwd_is_git_repo=True))
     assert r.task_type == "agentic_coding"
-    assert r.tier == "M"  # default L, minus one for "quick/typo"
+    assert r.tier == "S"  # default M (refit to real Hermes runs), minus one for "quick/typo"
 
 
 def test_long_context_bumps_tier():

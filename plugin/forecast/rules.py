@@ -101,6 +101,11 @@ _CODE_NOUNS = _rx(
 # Code identifiers: name(), snake_case, camelCase (Justin's eval: "add in_stock()" read as chat).
 _IDENTIFIER = re.compile(r"\b[A-Za-z_]\w*\(\)|\b[a-z]+_[a-z0-9_]+\b|\b[a-z]{2,}[A-Z][a-z]+[A-Za-z0-9]*\b")
 
+_CODE_ONLY = _rx(
+    r"只要代码|只给代码|只写代码|不用运行|不要运行",
+    r"\b(code only|only (the )?code|just (the )?code|no explanation|don'?t run it)\b",
+)
+
 _TYPE_TOOLSETS: dict[str, tuple[str, ...]] = {
     "agentic_coding": ("terminal", "file"),
     "research": ("web",),
@@ -115,8 +120,10 @@ _SCOPE_UP = _rx(
     r"\ball (the )?files\b|\bacross the (repo|codebase|project)\b",
 )
 _SCOPE_DOWN = _rx(
-    r"简单|小改|一行|顺手|快速|小问题|改个名|就一个|一个小|稍微",
-    r"\b(quick|quickly|small|simple|tiny|one[- ]line|typo|minor|just)\b",
+    # Not "one-line": in "add in_stock() and a one-line check" it describes the
+    # check, not the task (eval: 6 calls).
+    r"简单|小改|顺手|快速|小问题|改个名|就一个|一个小|稍微",
+    r"\b(quick|quickly|small|simple|tiny|typo|minor|just)\b",
 )
 
 _IMAGE_COUNT = re.compile(
@@ -146,7 +153,7 @@ class L1Result:
     output_per_step: float
     cache_hit: float
     start_prompt: float
-    warm_cache: bool
+    warm_cache: "bool | float"
     tokens_p50: TokenSplit
     tokens_p90: TokenSplit
     per_call_units: dict[str, int]
@@ -184,6 +191,10 @@ def _type_scores(features: Any, msg: str, sigs: list[str]) -> dict[str, float]:
     if code_block:
         scores["coding_chat"] += 1.5
         sigs.append("code block")
+    if _CODE_ONLY.search(msg):
+        # The user wants a snippet back, not work done in the repo (eval: 2 calls).
+        scores["coding_chat"] += 2.0
+        sigs.append("code only")
     if paths:
         scores["code_reasoning"] += 0.3
         scores["agentic_coding"] += 0.3
@@ -193,7 +204,8 @@ def _type_scores(features: Any, msg: str, sigs: list[str]) -> dict[str, float]:
         scores["agentic_coding"] += 0.5
         scores["code_reasoning"] += 0.3
         sigs.append("code identifier")
-    code_context = bool(code_block or paths or idents or in_repo or _CODE_NOUNS.search(msg))
+    # Being inside a repo is not enough: "explain TCP vs UDP" asked in a repo is chat.
+    code_context = bool(code_block or paths or idents or _CODE_NOUNS.search(msg))
     if _GENERIC_REASONING.search(msg) and code_context:
         scores["code_reasoning"] += 1.0
         sigs.append("code_reasoning keywords")
@@ -306,7 +318,12 @@ def classify(features: Any) -> L1Result:
     model = get(features, "model", None)
     cache_hit = D.cache_hit_for(model)
     start_prompt = float((context_now or D.HERMES_FLOOR_TOKENS) + msg_tokens)
-    warm = int(get(features, "session_turns_so_far", 0) or 0) > 0
+    # Later turn of a session: the whole prompt prefix is cached. First turn: only
+    # the cross-session shared tool-schema prefix is (when the provider caches).
+    if int(get(features, "session_turns_so_far", 0) or 0) > 0:
+        warm: "bool | float" = True
+    else:
+        warm = float(D.SHARED_PREFIX_TOKENS) if cache_hit > 0 else False
 
     tokens_p50 = project(k50, start_prompt, growth, output, cache_hit, warm)
     tokens_p90 = project(k90, start_prompt, growth, output, cache_hit, warm)
@@ -317,7 +334,7 @@ def classify(features: Any) -> L1Result:
     if task_type == "delegated":
         n50, n90 = _subagent_counts(msg)
         s50, s90 = D.SUBAGENT_STEPS
-        sub_g, sub_o = D.TYPE_SHAPES["research"].growth, D.TYPE_SHAPES["research"].output
+        sub_g, sub_o = D.SUBAGENT_GROWTH, D.SUBAGENT_OUTPUT
         one50 = project(s50, D.SUBAGENT_FLOOR_TOKENS, sub_g, sub_o, cache_hit)
         one90 = project(s90, D.SUBAGENT_FLOOR_TOKENS, sub_g, sub_o, cache_hit)
         tokens_p50 = tokens_p50 + one50.scaled(n50)

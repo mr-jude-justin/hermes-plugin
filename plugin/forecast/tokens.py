@@ -51,13 +51,23 @@ class TokenSplit:
         }
 
 
+def first_prefix(warm_cache: "bool | float", start_prompt: float) -> float:
+    """Cached prefix of the first call: True = all of it, False/None = none, a
+    number = that many tokens (e.g. a cross-session shared tool-schema prefix)."""
+    if warm_cache is True:
+        return start_prompt
+    if not warm_cache:
+        return 0.0
+    return min(float(warm_cache), start_prompt)
+
+
 def step_splits(
     steps: float,
     start_prompt: float,
     growth: float,
     output_per_step: float,
     cache_hit: float,
-    warm_cache: bool = False,
+    warm_cache: "bool | float" = False,
 ) -> list[TokenSplit]:
     """The same model as `project`, one TokenSplit per call (for per-call pricing).
 
@@ -77,7 +87,7 @@ def step_splits(
         if h == 0.0:
             s = TokenSplit(lj, 0.0, 0.0, o)
         else:
-            prefix = (l1 if warm_cache else 0.0) if j == 1 else l1 + g * (j - 2)
+            prefix = first_prefix(warm_cache, l1) if j == 1 else l1 + g * (j - 2)
             s = TokenSplit((1 - h) * prefix, h * prefix, lj - prefix, o)
         out.append(s.scaled(frac) if frac < 1.0 else s)
         j += 1
@@ -90,7 +100,7 @@ def project(
     growth: float,
     output_per_step: float,
     cache_hit: float,
-    warm_cache: bool = False,
+    warm_cache: "bool | float" = False,
 ) -> TokenSplit:
     """Token split for `steps` calls starting at prompt length `start_prompt`.
 
@@ -113,7 +123,7 @@ def project(
     # Prefix of call 1 is L1 if warm, else nothing. Prefix of call j ≥ 2 is
     # L_{j−1}. The sum over j = 2..K of L_{j−1} is (K−1)·L1 + g·(K−1)(K−2)/2.
     km1 = max(0.0, k - 1)
-    prefix = (l1 if warm_cache else 0.0) + km1 * l1 + g * km1 * max(0.0, k - 2) / 2
+    prefix = first_prefix(warm_cache, l1) + km1 * l1 + g * km1 * max(0.0, k - 2) / 2
     prefix = min(prefix, total_prompt)
     new = total_prompt - prefix
 

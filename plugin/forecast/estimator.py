@@ -67,15 +67,14 @@ def _shape_dict(r: L1Result, growth: float, output: float, cache_hit: float) -> 
         "warm_cache": r.warm_cache,
     }
     if r.subagents_p50 or r.subagents_p90:
-        sub = D.TYPE_SHAPES["research"]
         shape["subagents"] = {
             "count_p50": r.subagents_p50,
             "count_p90": r.subagents_p90,
             "steps_p50": D.SUBAGENT_STEPS[0],
             "steps_p90": D.SUBAGENT_STEPS[1],
             "start_prompt": D.SUBAGENT_FLOOR_TOKENS,
-            "growth": sub.growth,
-            "output_per_step": sub.output,
+            "growth": D.SUBAGENT_GROWTH,
+            "output_per_step": D.SUBAGENT_OUTPUT,
             "cache_hit": round(r.cache_hit, 4),
         }
     return shape
@@ -94,7 +93,7 @@ def projected_steps(estimate: Any, which: str = "p50") -> list[Tokens]:
     # A reforecast's shape covers only the calls still to come.
     k = max(0.0, k - float(shape.get("steps_done", 0) or 0))
     splits = step_splits(k, shape["start_prompt"], shape["growth"], shape["output_per_step"],
-                         shape["cache_hit"], bool(shape.get("warm_cache")))
+                         shape["cache_hit"], shape.get("warm_cache", False))
     sub = shape.get("subagents")
     if sub:
         n = float(sub["count_" + which])
