@@ -40,6 +40,8 @@ _TYPE_PATTERNS: dict[str, re.Pattern[str]] = {
         r"\badd (a |an |the )?(feature|tests?|endpoint|command|flag|option)\b",
         r"\bwrite (unit |integration )?tests\b",
         r"\b(build|create|make) (a |an )?(script|cli|app|tool|plugin|service|website|api)\b",
+        r"\bwrite (a |an |me a |me an )?(\w+ ){0,3}(script|program|cli|tool|function|class|module|server|bot)\b",
+        r"\b(save|run|execute) (it|this|the (script|file|code))\b",
     ),
     "code_reasoning": _rx(
         r"解释|为什么|怎么工作|原理|读一下|读读|审查|代码审查|梳理|定位|看看.{0,6}(代码|模块|函数|逻辑)",
@@ -237,12 +239,18 @@ def classify(features: Any) -> L1Result:
     if task_type in _CODE_TYPES and count_paths(msg) >= 3:
         shift += 1
         sigs.append("many files")
+    msg_tokens = approx_tokens(msg)
+    if task_type == "agentic_coding" and not get(features, "cwd_is_git_repo", False) and count_paths(msg) == 0:
+        # A standalone script outside any repo, e.g. "write a fib script and run it".
+        shift -= 1
+        sigs.append("standalone")
+        if msg_tokens < 20:
+            shift -= 0.5
     repo = get(features, "repo_size", {}) or {}
     repo_lines = repo.get("lines", 0) if isinstance(repo, dict) else getattr(repo, "lines", 0)
     if task_type in ("agentic_coding", "code_reasoning") and (repo_lines or 0) > D.LARGE_REPO_LINES:
         shift += 0.5
         sigs.append("large repo")
-    msg_tokens = approx_tokens(msg)
     if msg_tokens > 1500:
         shift += 0.5
         sigs.append("long spec")
