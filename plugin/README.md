@@ -53,6 +53,10 @@ Change these in Hermes Desktop under **Settings → Plugins → cost-forecast**,
 | `task_cap_usd` | `3.0` | Soft cap per task. Hermes asks for your OK when a task is projected to go over it |
 | `task_hard_limit_usd` | `10.0` | Hard limit per task. Only your reply can raise it |
 | `daily_cap_usd` | `20.0` | All tasks stop once today's spend reaches this |
+| `l3_mode` | `off` | Cheap-model estimate: `auto` asks a cheap model to size tasks that the rules and your history can't size; `always` asks it for every message |
+| `l3_model` | empty | The cheap model. If empty, one is picked for your provider: claude-haiku-5-5, gpt-5-mini, gemini-3.1-flash-lite or deepseek-v4-flash |
+
+The cheap-model estimate needs the **model override** permission, which Hermes asks you for when you enable the plugin. Without it, the setting does nothing. Each cheap-model call costs a fraction of a cent, and that cost is counted in your spend.
 
 Type `/forecast` in any chat to see today's spend and the current task's spend, projection and limits.
 
@@ -109,7 +113,7 @@ hermes auth add anthropic --api-key <your Anthropic Console key>
 
 ## What the plugin does on your machine
 
-- **Network:** fetches public model prices from `https://models.dev/api.json`, at most once a day, in a background thread. Nothing else leaves your machine. There is no telemetry, and the plugin never downloads or replaces its own code.
+- **Network:** fetches public model prices from `https://models.dev/api.json`, at most once a day, in a background thread. If you turn on the cheap-model estimate (`l3_mode`, off by default), your message is also sent through Hermes to your own model provider, in one extra short call to a cheap model. Nothing else leaves your machine. There is no telemetry, and the plugin never downloads or replaces its own code.
 - **Data stored:** a SQLite database and a price cache in `<HERMES_HOME>/plugin-data/cost-forecast/`. It holds:
   - your daily spend;
   - a finished-task history: features (including the names of tools used and the file paths they touched), token counts, costs and outcome, with the message text removed;
