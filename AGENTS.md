@@ -33,11 +33,15 @@ Humans over agents. The team lead is Justin (`@mr-jude-justin`). Only the team l
 
 The Hermes plugin itself lives in `plugin/` (its `plugin.yaml` and entrypoints). The catalog entry points `subdir` at `plugin/`. Board tooling (`tools/`, `AGENTS.md`, `.claude/`) stays at the repo root and is not part of the plugin.
 
-| Area | Owner (GitHub login) | Folders |
-|---|---|---|
-| Plugin core (to be split at kickoff) | @mr-jude-justin | `plugin/` (TBD) |
-| Plugin core (to be split at kickoff) | @easonluo727 | `plugin/` (TBD) |
-| Board tooling and team rules | @mr-jude-justin | `tools/`, `AGENTS.md`, `CLAUDE.md`, `.claude/` |
+The plugin forecasts a task's cost before it runs and stops for confirmation when it would go over budget. The full plan, interface contract and timeline are in `docs/plan.md`.
+
+| Area | Owner (GitHub login) | Folders | Responsible for |
+|---|---|---|---|
+| Harness | @mr-jude-justin | `plugin/__init__.py`, `plugin/harness/`, `plugin/pricing.py`, `plugin/plugin.yaml` | Hook wiring, feature collection, cost ledger, price table, budget policy and config, quote/block messages, estimator tools, storage, packaging and `hermes plugins validate` |
+| Forecast algorithm | @easonluo727 | `plugin/forecast/`, `plugin/forecast/tests/`, `eval/` | Task tiers, L1 rules / L2 history match / L3 cheap model, P50/P90 ranges, mid-task reforecast, calibration, cold-start defaults, evaluation set |
+| Board tooling, team rules, plan | @mr-jude-justin | `tools/`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `docs/` | |
+
+Eason asks Justin for new features on the board (`[Eason's Claude] @mr-jude-justin need feature: <name>, use: <why>, hook: <guess>`). The interface in `docs/plan.md` section 5 only grows; changing a field needs a board post first.
 
 ## 5. Submission (Hermes Agent Plugin Hackathon)
 
