@@ -5,6 +5,8 @@ author: Justin Zhuang, Eason Luo
 homepage: https://github.com/mr-jude-justin/hermes-plugin
 tags: [cost, budget, forecast]
 requires_hermes: ">=0.23.0"
+capabilities:
+  - llm.model_override  # optional: lets the L3 estimate use a cheap model instead of your main one
 provides_hooks:
   - pre_llm_call
   - post_api_request
@@ -21,3 +23,5 @@ config_schema:
   task_cap_usd: {type: float, default: 3.0, label: "Per-task cap (USD)", description: "Pause for your OK when a task is projected to cost more."}
   task_hard_limit_usd: {type: float, default: 10.0, label: "Per-task hard limit (USD)", description: "Stop a task at this spend. Approvals and /yolo cannot raise it; only your reply can."}
   daily_cap_usd: {type: float, default: 20.0, label: "Daily cap (USD)", description: "Stop all tasks once today's spend reaches this."}
+  l3_mode: {type: str, choices: ["off", auto, always], default: "off", label: "Cheap-model estimate", description: "Ask a cheap model to size tasks the rules and your history can't. auto: only when unsure. Needs the model-override permission; costs a fraction of a cent per quote."}
+  l3_model: {type: str, default: "", label: "Cheap model", description: "Model for the cheap-model estimate. Empty picks one on your provider (claude-haiku-5-5, gpt-5-mini, gemini-3.1-flash-lite, deepseek-v4-flash)."}

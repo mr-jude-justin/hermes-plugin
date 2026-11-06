@@ -47,11 +47,14 @@ class Settings:
     task_cap_usd: float = 3.00
     task_hard_limit_usd: float = 10.00
     daily_cap_usd: float = 20.00
+    l3_mode: str = "off"   # off | auto | always: cheap-model estimate (needs llm.model_override)
+    l3_model: str = ""     # empty: a cheap model on the user's provider
 
     @classmethod
     def from_getter(cls, get: Callable[..., Any]) -> Settings:
         s = cls()
-        for f in ("enabled", "quote_threshold_usd", "task_cap_usd", "task_hard_limit_usd", "daily_cap_usd"):
+        for f in ("enabled", "quote_threshold_usd", "task_cap_usd", "task_hard_limit_usd", "daily_cap_usd",
+                  "l3_mode", "l3_model"):
             try:
                 value = get(f, default=getattr(s, f))
                 setattr(s, f, type(getattr(s, f))(value))
@@ -90,6 +93,7 @@ class Harness:
         self.parent_of: dict[str, str] = {}     # subagent session -> parent session
         self.context_tokens: dict[str, int] = {}
         self.provider_of: dict[str, str] = {}
+        self.last_provider: Optional[str] = None
         self.recent_tools: dict[str, list[str]] = {}
 
     # --- helpers -------------------------------------------------------------------------------
@@ -138,7 +142,7 @@ class Harness:
         if accepted and estimate.cost_usd_p90 is not None:
             cap = max(cap, _round_up(estimate.cost_usd_p90 * 1.2))
         run = Run(session_id, features, estimate, cap=cap, ceiling=max(s.task_hard_limit_usd, cap),
-                  projected=estimate.cost_usd_p50 or 0.0)
+                  projected=estimate.cost_usd_p50 or 0.0, spent=estimate.estimate_cost_usd or 0.0)
         with self._lock:
             self.runs[session_id] = run
         return run
@@ -228,6 +232,8 @@ class Harness:
             price=self.prices.price(provider, model) if model else None)
         try:
             estimate = self.price_estimate(self.forecast.estimate(features), model, provider)
+            if estimate.estimate_cost_usd:  # the L3 call; ctx.llm calls never reach post_api_request
+                self.store.add_spend(estimate.estimate_cost_usd)
         except Exception:
             log.exception("estimate failed; running without a quote")
             self._start(sid, features, Estimate(basis="estimate failed"))
@@ -263,6 +269,7 @@ class Harness:
         with self._lock:
             if provider:
                 self.provider_of[sid] = provider
+                self.last_provider = provider
             if u.prompt_tokens:
                 self.context_tokens[sid] = u.prompt_tokens
         run = self._run_for(sid)

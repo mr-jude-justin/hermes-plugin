@@ -192,3 +192,12 @@ def test_cron_env_counts_as_unattended(tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_CRON_SESSION", "1")
     h, _, _ = make(tmp_path, estimate_usd=2.0)
     assert h.pre_llm_call(session_id="s", user_message="big job", model="m", platform="discord") is None
+
+
+def test_estimate_cost_is_billed_once_and_counts_toward_the_task(tmp_path):
+    h, store, _ = make(tmp_path, estimate_usd=0.1)
+    real = h.forecast.estimate
+    h.forecast.estimate = lambda f: (lambda e: (setattr(e, "estimate_cost_usd", 0.002), e)[1])(real(f))
+    h.pre_llm_call(session_id="s", user_message="hi", model="m")
+    assert store.spent_today() == pytest.approx(0.002)
+    assert h.runs["s"].spent == pytest.approx(0.002)
