@@ -176,3 +176,19 @@ def test_budget_command(tmp_path):
     h.pre_llm_call(session_id="s", user_message="hi", model="m")
     text = h.budget_command("", session_id="s")
     assert "Spent today" in text and "Current task (running)" in text
+
+
+@pytest.mark.parametrize("platform", ["cron", "webhook", "api_server"])
+def test_unattended_runs_skip_the_quote_but_keep_the_hard_limit(tmp_path, platform):
+    h, _, _ = make(tmp_path, estimate_usd=2.0, task_hard_limit_usd=1.0, task_cap_usd=1.0)
+    assert h.pre_llm_call(session_id="s", user_message="big job", model="m", platform=platform) is None
+    assert h.runs["s"].ceiling == 1.0  # nobody accepted the $4 P90, so the limit stays put
+    call(h, "s", 1.2)
+    r = h.pre_tool_call(tool_name="terminal", args={}, session_id="s")
+    assert r["action"] == "block"
+
+
+def test_cron_env_counts_as_unattended(tmp_path, monkeypatch):
+    monkeypatch.setenv("HERMES_CRON_SESSION", "1")
+    h, _, _ = make(tmp_path, estimate_usd=2.0)
+    assert h.pre_llm_call(session_id="s", user_message="big job", model="m", platform="discord") is None

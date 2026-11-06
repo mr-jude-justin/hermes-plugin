@@ -130,10 +130,12 @@ class Harness:
         return e
 
     def _start(self, session_id: str, features: TaskFeatures, estimate: Estimate,
-               cap: Optional[float] = None) -> Run:
+               cap: Optional[float] = None, accepted: bool = False) -> Run:
+        """Start a task. `accepted`: the user saw the quote and said yes, so the cap (and,
+        through it, the hard limit) may rise to cover the quoted P90."""
         s = self.settings()
         cap = cap if cap is not None else s.task_cap_usd
-        if estimate.cost_usd_p90 is not None:  # the user saw this range and accepted it
+        if accepted and estimate.cost_usd_p90 is not None:
             cap = max(cap, _round_up(estimate.cost_usd_p90 * 1.2))
         run = Run(session_id, features, estimate, cap=cap, ceiling=max(s.task_hard_limit_usd, cap),
                   projected=estimate.cost_usd_p50 or 0.0)
@@ -198,7 +200,7 @@ class Harness:
         if pending:
             if reply.kind == "approve":
                 self.store.drop_pending(sid)
-                self._start(sid, pending.features, pending.estimate)
+                self._start(sid, pending.features, pending.estimate, accepted=True)
                 return {"context": messages.reinject(pending.message)}
             if reply.kind == "cancel":
                 self.store.drop_pending(sid)
@@ -209,7 +211,7 @@ class Harness:
                 if p90 is not None and p90 > reply.cap_usd:
                     return {"action": "block", "message": messages.cap_still_low(pending.estimate, reply.cap_usd)}
                 self.store.drop_pending(sid)
-                run = self._start(sid, pending.features, pending.estimate, cap=reply.cap_usd)
+                run = self._start(sid, pending.features, pending.estimate, cap=reply.cap_usd, accepted=True)
                 run.ceiling = max(run.ceiling, reply.cap_usd)
                 return {"context": messages.reinject(pending.message)}
             # Anything else is a new request: the quote lapses.
@@ -232,6 +234,11 @@ class Harness:
             return None
 
         p50, p90 = estimate.cost_usd_p50, estimate.cost_usd_p90
+        # Nobody can answer a quote in cron or webhook runs: skip it and rely on the hard
+        # limit and daily cap, which stop the task without waiting for anyone.
+        if collect.unattended(platform):
+            self._start(sid, features, estimate)
+            return None
         if p50 is not None and (p50 >= s.quote_threshold_usd or (p90 or 0) > s.task_cap_usd):
             self.store.put_pending(sid, message, features, estimate, turn_id)
             return {"action": "block",

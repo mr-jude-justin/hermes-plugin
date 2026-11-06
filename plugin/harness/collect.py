@@ -6,6 +6,7 @@ a helper costs us one feature, never the hook.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any, Optional
@@ -27,6 +28,15 @@ def _hermes_config() -> dict[str, Any]:
         return load_config_readonly() or {}
     except Exception:
         return {}
+
+
+# Surfaces where nobody can answer a quote (Hermes' own list for approvals, plus cron).
+UNATTENDED_PLATFORMS = {"webhook", "msgraph_webhook", "api_server", "cron"}
+
+
+def unattended(platform: str) -> bool:
+    cron = os.environ.get("HERMES_CRON_SESSION", "").strip().lower() in {"1", "true", "yes", "on"}
+    return cron or (platform or "").lower() in UNATTENDED_PLATFORMS
 
 
 def reasoning_effort() -> Optional[str]:
