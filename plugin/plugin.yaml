@@ -2,6 +2,7 @@ name: cost-forecast
 version: 0.1.0
 description: Quotes a task's cost before it runs and stops for your OK when it would go over budget. API-key users only.
 author: Justin Zhuang, Eason Luo
+license: MIT
 homepage: https://github.com/mr-jude-justin/hermes-plugin
 tags: [cost, budget, forecast]
 requires_hermes: ">=0.23.0"
