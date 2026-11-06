@@ -172,6 +172,21 @@ def test_live_mode_attribute_wins_over_configured_mode():
         configure(None)
 
 
+@pytest.mark.parametrize("bad", [False, "False", None, "of", "", 0])
+def test_unknown_modes_mean_off(bad):
+    # `hermes config set ... l3_mode off` stores YAML false (Justin's live test).
+    llm = FakeLLM()
+    llm.mode = bad
+    configure(None, llm=llm, l3_mode=bad)
+    try:
+        estimate(tf(AMBIGUOUS))
+        assert llm.calls == 0
+    finally:
+        configure(None)
+    assert L3.normalize_mode(bad) == "off"
+    assert L3.normalize_mode(" ALWAYS ") == "always"
+
+
 def test_configure_wires_llm_and_mode():
     llm = FakeLLM()
     configure(None, llm=llm, l3_mode="always")

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import defaults as D
+from .features import _URL as _URL_RE
 from .features import (
     approx_tokens,
     count_paths,
@@ -38,16 +39,17 @@ _TYPE_PATTERNS: dict[str, re.Pattern[str]] = {
         r"写一个.{0,8}(脚本|程序|工具|插件|服务|接口|网站|应用)",
         r"\b(fix|implement|refactor|migrate|rewrite|scaffold|deploy|port)\b",
         r"\badd (a |an |the )?(feature|tests?|endpoint|command|flag|option)\b",
+        r"\badd\b.{0,40}\b(function|method|check|field|validation|helper|parameter|argument)s?\b",
+        r"加一?个.{0,8}(函数|方法|检查|字段|校验|参数)",
         r"\bwrite (unit |integration )?tests\b",
         r"\b(build|create|make) (a |an )?(script|cli|app|tool|plugin|service|website|api)\b",
         r"\bwrite (a |an |me a |me an )?(\w+ ){0,3}(script|program|cli|tool|function|class|module|server|bot)\b",
         r"\b(save|run|execute) (it|this|the (script|file|code))\b",
     ),
     "code_reasoning": _rx(
-        r"解释|为什么|怎么工作|原理|读一下|读读|审查|代码审查|梳理|定位|看看.{0,6}(代码|模块|函数|逻辑)",
+        r"读一下|读读|审查|代码审查|梳理|定位|看看.{0,6}(代码|模块|函数|逻辑)",
         r"分析.{0,6}(代码|模块|仓库|项目)|找出.{0,6}(bug|问题)",
-        r"\b(explain|review|walk me through|understand|analy[sz]e|trace)\b",
-        r"\b(why does|how does|where is|what does)\b",
+        r"\b(review|walk me through|trace)\b",
         r"\bfind the (bug|issue|cause)\b",
     ),
     "coding_chat": _rx(
@@ -85,6 +87,20 @@ _TYPE_PATTERNS: dict[str, re.Pattern[str]] = {
 
 # A toolset only counts as a weak supporting signal, because it is enabled for
 # every message. It never decides a type on its own.
+# "Explain / why / how does" is code reasoning only when the message is about
+# code; "explain TCP vs UDP" is chat (Justin's eval: it scored code_reasoning/M).
+_GENERIC_REASONING = _rx(
+    r"解释|为什么|怎么工作|原理",
+    r"\b(explain|understand|analy[sz]e)\b",
+    r"\b(why does|how does|where is|what does)\b",
+)
+_CODE_NOUNS = _rx(
+    r"代码|函数|方法|模块|类|仓库|文件|报错|脚本|接口|变量",
+    r"\b(code|function|method|module|class|repo|repository|file|bug|script|variable|endpoint|test|stack ?trace)s?\b",
+)
+# Code identifiers: name(), snake_case, camelCase (Justin's eval: "add in_stock()" read as chat).
+_IDENTIFIER = re.compile(r"\b[A-Za-z_]\w*\(\)|\b[a-z]+_[a-z0-9_]+\b|\b[a-z]{2,}[A-Z][a-z]+[A-Za-z0-9]*\b")
+
 _TYPE_TOOLSETS: dict[str, tuple[str, ...]] = {
     "agentic_coding": ("terminal", "file"),
     "research": ("web",),
@@ -172,6 +188,15 @@ def _type_scores(features: Any, msg: str, sigs: list[str]) -> dict[str, float]:
         scores["code_reasoning"] += 0.3
         scores["agentic_coding"] += 0.3
         sigs.append(f"{paths} path(s)")
+    idents = {m.group(0) for m in _IDENTIFIER.finditer(_URL_RE.sub(" ", msg))}
+    if idents:
+        scores["agentic_coding"] += 0.5
+        scores["code_reasoning"] += 0.3
+        sigs.append("code identifier")
+    code_context = bool(code_block or paths or idents or in_repo or _CODE_NOUNS.search(msg))
+    if _GENERIC_REASONING.search(msg) and code_context:
+        scores["code_reasoning"] += 1.0
+        sigs.append("code_reasoning keywords")
     if in_repo and (scores["agentic_coding"] >= 1 or scores["code_reasoning"] >= 1):
         # Being in a repo makes "do it in the repo" more likely than "talk about a snippet".
         scores["agentic_coding"] += 0.3
@@ -239,6 +264,10 @@ def classify(features: Any) -> L1Result:
     if task_type in _CODE_TYPES and count_paths(msg) >= 3:
         shift += 1
         sigs.append("many files")
+    if task_type == "code_reasoning" and count_paths(msg) <= 1 and not _SCOPE_UP.search(msg):
+        # Explaining one file or snippet took 2 calls on Hermes (Justin's eval).
+        shift -= 1
+        sigs.append("single file")
     msg_tokens = approx_tokens(msg)
     if task_type == "agentic_coding" and not get(features, "cwd_is_git_repo", False) and count_paths(msg) == 0:
         # A standalone script outside any repo, e.g. "write a fib script and run it".

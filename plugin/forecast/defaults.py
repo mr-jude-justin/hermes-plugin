@@ -66,7 +66,8 @@ TYPE_SHAPES: dict[str, TypeShape] = {
     "agentic_coding": TypeShape(growth=3_000, output=1_000, default_tier="L"),
     "research": TypeShape(growth=8_000, output=1_500, default_tier="M"),
     "generation": TypeShape(growth=500, output=300, default_tier="S"),
-    "delegated": TypeShape(growth=3_000, output=1_000, default_tier="L"),
+    # The main agent mostly coordinates; subagents are added as their own segments.
+    "delegated": TypeShape(growth=3_000, output=1_000, default_tier="M"),
     "browser": TypeShape(growth=1_500, output=500, default_tier="M"),
     "long_doc": TypeShape(growth=2_000, output=1_500, default_tier="M"),
 }

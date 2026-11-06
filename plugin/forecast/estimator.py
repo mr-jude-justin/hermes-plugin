@@ -43,7 +43,8 @@ def configure(state: Any, history: Any = None, llm: Any = None, l3_mode: str = "
     _index = H.L2Index(state) if state is not None else None
     _history = history
     _llm = llm
-    _l3_mode = l3_mode if l3_mode in ("auto", "always", "off") else "auto"
+    # Unknown values mean off: L3 costs money (YAML `off` reads back as False).
+    _l3_mode = L3.normalize_mode(l3_mode)
 
 
 def _resolve_index(state: Any) -> Optional[H.L2Index]:
@@ -107,6 +108,9 @@ def projected_steps(estimate: Any, which: str = "p50") -> list[Tokens]:
 
 
 _ESTIMATE_FIELDS = {f.name for f in dataclasses.fields(Estimate)}
+
+# Every task makes at least one model call.
+MIN_STEPS = 1.0
 
 
 def _build(**kw: Any) -> Estimate:
@@ -178,7 +182,8 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
     use_llm = llm if llm is not None else _llm
     # The harness's llm carries a live `.mode`, so a settings change applies
     # without a restart; an explicit argument wins.
-    mode = l3_mode or getattr(use_llm, "mode", None) or _l3_mode
+    raw = l3_mode if l3_mode is not None else getattr(use_llm, "mode", _l3_mode)
+    mode = L3.normalize_mode(raw)
     if use_llm is not None and L3.should_run(mode, message_of(features), r.confidence, has_neighbours):
         guess = L3.ask(use_llm, features)
         if guess is not None:
@@ -210,11 +215,19 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
     draft50 = project(k50, *args).total + extra50.total
     draft90 = project(k90, *args).total + extra90.total
     cal = idx.calibration() if idx is not None else None
+    sub_scale = (1.0, 1.0)
     if cal is not None and cal.active:
         t50 = draft50 * math.exp(cal.bias(task_type))
         t90 = t50 * math.exp(cal.spread(math.log(max(draft90, draft50 * 1.01) / draft50)))
-        k50 = _solve_steps(max(1.0, t50 - extra50.total), *args)
-        k90 = max(k50 * 1.05, _solve_steps(max(1.0, t90 - extra90.total), *args))
+        # Scale the main agent and the subagent segments by the same factor.
+        # Shrinking only the main agent let delegated tasks collapse to ~0 steps
+        # (Justin's eval: est_steps 0.1).
+        f50, f90 = t50 / draft50, t90 / draft90
+        main50, main90 = draft50 - extra50.total, draft90 - extra90.total
+        extra50, extra90 = extra50.scaled(f50), extra90.scaled(f90)
+        k50 = max(MIN_STEPS, _solve_steps(main50 * f50, *args))
+        k90 = max(k50 * 1.05, _solve_steps(main90 * f90, *args))
+        sub_scale = (f50, f90)
         # layer_used keeps the contract's L1 | L2 | L3 values; calibration shows in basis.
         basis = f"{basis}; {cal.describe(task_type)}"
 
@@ -225,6 +238,12 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
     # against its own output (otherwise the correction would undo itself).
     shape["draft_p50"] = round(draft50)
     shape["draft_p90"] = round(draft90)
+    if "subagents" in shape and sub_scale != (1.0, 1.0):
+        # Keep projected_steps consistent with the scaled subagent tokens.
+        sub = dict(shape["subagents"])
+        sub["count_p50"] = round(sub["count_p50"] * sub_scale[0], 3)
+        sub["count_p90"] = round(sub["count_p90"] * sub_scale[1], 3)
+        shape["subagents"] = sub
     if l3_steps is not None:
         shape["l3_steps"] = l3_steps  # raw guess, so its bias can be learned
     return _build(
