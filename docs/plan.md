@@ -190,6 +190,32 @@
   - 校准系数通过 `forecast_state.get(key)` / `forecast_state.set(key, value)` 读写
 - **L3 便宜模型的花费也要记账**，金额取 `estimate_cost_usd`。
 
+### 5.2 第二轮补充（11/6 看板上达成一致）
+
+原则：**harness 全面服务算法。** Eason 需要的特征，harness 都负责收集。
+
+**接口新增（只增不改）：**
+- `Usage` 和 `Estimate` 的 token 拆分里都加上 `cache_write`。Hermes 的 `usage` 把缓存写入单独列出，价格也和缓存读取不同。
+- `record_outcome(features, estimate, actual: Usage | None, steps, outcome)`，其中 `outcome` 取 `"completed"`、`"declined"` 或 `"stopped"`：
+  - `declined`（用户取消了报价）：只用来调整报价门槛，不参与校准
+  - `stopped`（跑到一半被预算拦下）：实际花费只是下限，算法按右删失数据处理
+- `Estimate.task_type`：`chat` / `coding_chat` / `code_reasoning` / `agentic_coding` / `research` / `generation` / `delegated` / `browser` / `long_doc`，报价时显示，例如"agentic coding，L 级"。
+
+**harness 要收集的特征（按顺序做，全部要做）：**
+1. `step_usages`：每一步的 `Usage`（含 `cache_write`、`prompt_tokens`），按顺序记录，来自 `post_api_request`
+2. `step_tools`：每一步的工具名、成功或失败；文件类工具（`read_file`、`write_file`、`patch`、`search_files`）带上目标路径，用来识别反复读改同一个文件。来自 `pre_tool_call` / `post_tool_call`
+3. `reasoning_effort`：会话的推理强度，从配置读取
+4. `tool_errors`、`retries`、连续 `no_progress_calls`：来自 `post_tool_call` / `api_request_error`
+5. `plan_items {total, done}`：Hermes 的待办工具叫 `todo_list`（工具集 `todo`），每项带状态，从它的调用参数里读
+6. 每个子 agent 的用量和模型：`subagent_start` / `subagent_stop` 不提供模型和 token 数，改用 `post_api_request` 按子会话 ID 归集（待实测）
+
+**拦截后保存原请求（harness）：**
+- 每次拦截在 `plugin_db()` 存一行：`session_id`、原请求 `message`、当时的 `estimate` 和 `features`、`blocked_at`、`turn_id`。不存上下文，因为 Hermes 只替换被拦的那一条消息。
+- 用户同意后，用 `pre_llm_call` 的 `context` 把原请求补回去，并沿用存下的 `estimate` 和 `features`，不重新估价。已实测：补回去的原请求在后续几轮里模型都能看到。但 hook 拿到的 `conversation_history` 里看不到它，所以 harness 要一直保存到任务结束。
+- 用户发了别的消息，就作废这一行；30 分钟后也自动作废。
+- 判断用户是否同意用关键词，不调模型。只有简短的回复命中关键词才算同意，例如"好的，不过先只改第一个文件"要当作新任务重新估价。
+- 隐私：原请求在任务结束或取消后删除。L2 历史比对只存词和字符 n-gram 的哈希计数，不存原文。
+
 ---
 
 ## 6. 今晚就要验证的事（不通过就要换方向）
