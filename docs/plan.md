@@ -166,6 +166,24 @@
 
 **跑到一半：`Reforecast`**（输入：已花费、已执行的步数、最近每步的花费；输出：预计最终总价的 P50 和 P90）
 
+### 5.1 定稿（11/6 看板上 Justin 和 Eason 达成一致）
+
+上面的 JSON 是草案，以本节为准。
+
+- **算法预测 token 数，不直接预测美元。** `Estimate` 增加：
+  - `tokens_p50` 和 `tokens_p90`，各自拆成 `{input, cache_read, output}`
+  - `per_call_units`：按次收费的工作，例如 `{"image_gen": 3}`
+  - `cost_usd_p50` 和 `cost_usd_p90` 保留，由 harness 用 `pricing.py` 换算后填入
+- **Python 入口**（`plugin/forecast/`）：
+  - `estimate(features: TaskFeatures) -> Estimate`
+  - `reforecast(features, original: Estimate, spent: Usage, steps_done: int, recent_steps: list[Usage]) -> Estimate`
+  - `record_outcome(features, estimate, actual: Usage, steps: int) -> None`
+- **共享类型** `TaskFeatures`、`Estimate`、`Usage`、`PastTask` 统一放在 `plugin/contracts.py`，由 Justin 负责，接口只增不改。
+- **存储由 harness 负责**：
+  - `history.load() -> list[PastTask]`；`PastTask` 包含 `features`、`actual: Usage`、`steps`、`model`，以及当初的 `estimate`
+  - 校准系数通过 `forecast_state.get(key)` / `forecast_state.set(key, value)` 读写
+- **L3 便宜模型的花费也要记账**，金额取 `estimate_cost_usd`。
+
 ---
 
 ## 6. 今晚就要验证的事（不通过就要换方向）
