@@ -29,5 +29,5 @@ def register(ctx):
                       settings=lambda: Settings.from_getter(ctx.get_config))
     for name in HOOKS:
         ctx.register_hook(name, getattr(harness, name))
-    ctx.register_command("budget", harness.budget_command,
+    ctx.register_command("forecast", harness.forecast_command,
                          description="Show today's spend and the current task's budget")
