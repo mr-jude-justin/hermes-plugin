@@ -28,6 +28,15 @@ TIER_STEPS: dict[str, tuple[float, float]] = {
 # prompt + tool schemas). Used when the harness cannot tell us the context size.
 HERMES_FLOOR_TOKENS: int = 70_000
 
+# Hermes v0.23.0: every `delegate_task` child starts with its own prompt of
+# about 52.6k tokens (Justin's probe), so each subagent pays its own floor.
+SUBAGENT_FLOOR_TOKENS: int = 52_600
+
+# Delegated tasks: how many subagents to expect when the message gives no count
+# (P50, P90), and how many steps each one runs (tier M). Guesses.
+SUBAGENTS_DEFAULT: tuple[float, float] = (2.0, 4.0)
+SUBAGENT_STEPS: tuple[float, float] = (8.0, 20.0)
+
 TASK_TYPES: tuple[str, ...] = (
     "chat",
     "coding_chat",

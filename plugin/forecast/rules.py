@@ -108,6 +108,12 @@ _IMAGE_COUNT = re.compile(
 _CN_NUM = {"一": 1, "两": 2, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "几": 3}
 _IMAGE_COUNT_CN = re.compile(r"([一两二三四五六几])\s*(张|幅)")
 
+_SUBAGENT_COUNT = re.compile(
+    r"(\d+)\s*(个|路)?\s*(方向|子任务|子 ?agent|agents?|subagents?|sub-agents?|parts?|directions?|topics?)",
+    re.IGNORECASE,
+)
+_SUBAGENT_COUNT_CN = re.compile(r"([两二三四五六几])\s*个\s*(方向|子任务|子 ?agent|部分|问题)", re.IGNORECASE)
+
 _CODE_TYPES = {"agentic_coding", "code_reasoning", "coding_chat"}
 
 
@@ -128,6 +134,8 @@ class L1Result:
     per_call_units: dict[str, int]
     confidence: float
     signals: list[str] = field(default_factory=list)
+    subagents_p50: float = 0.0
+    subagents_p90: float = 0.0
 
     @property
     def basis(self) -> str:
@@ -195,6 +203,18 @@ def _image_units(msg: str) -> int:
     return 1
 
 
+def _subagent_counts(msg: str) -> tuple[float, float]:
+    m = _SUBAGENT_COUNT.search(msg)
+    if m:
+        n = float(max(1, min(int(m.group(1)), 20)))
+        return n, n
+    m = _SUBAGENT_COUNT_CN.search(msg)
+    if m:
+        n = float(_CN_NUM[m.group(1)])
+        return n, n
+    return D.SUBAGENTS_DEFAULT
+
+
 def classify(features: Any) -> L1Result:
     """Run the L1 rules on one task's features."""
     msg = message_of(features)
@@ -254,6 +274,19 @@ def classify(features: Any) -> L1Result:
     tokens_p50 = project(k50, start_prompt, growth, output, cache_hit, warm)
     tokens_p90 = project(k90, start_prompt, growth, output, cache_hit, warm)
 
+    # Delegated work: each subagent is its own segment that starts at its own
+    # floor with a cold cache (DESIGN.md 6.5 item 4).
+    n50 = n90 = 0.0
+    if task_type == "delegated":
+        n50, n90 = _subagent_counts(msg)
+        s50, s90 = D.SUBAGENT_STEPS
+        sub_g, sub_o = D.TYPE_SHAPES["research"].growth, D.TYPE_SHAPES["research"].output
+        one50 = project(s50, D.SUBAGENT_FLOOR_TOKENS, sub_g, sub_o, cache_hit)
+        one90 = project(s90, D.SUBAGENT_FLOOR_TOKENS, sub_g, sub_o, cache_hit)
+        tokens_p50 = tokens_p50 + one50.scaled(n50)
+        tokens_p90 = tokens_p90 + one90.scaled(n90)
+        sigs.append(f"~{n50:g} subagents")
+
     units: dict[str, int] = {}
     if task_type == "generation" or ("generation" in weights and "image_gen" in toolsets(features)):
         units["image_gen"] = _image_units(msg)
@@ -278,6 +311,8 @@ def classify(features: Any) -> L1Result:
         tokens_p50=tokens_p50,
         tokens_p90=tokens_p90,
         per_call_units=units,
+        subagents_p50=n50,
+        subagents_p90=n90,
         confidence=confidence,
         signals=sigs,
     )
