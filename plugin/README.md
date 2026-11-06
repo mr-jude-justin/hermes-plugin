@@ -54,7 +54,7 @@ Change these in Hermes Desktop under **Settings → Plugins → cost-forecast**,
 | `task_hard_limit_usd` | `10.0` | Hard limit per task. Only your reply can raise it |
 | `daily_cap_usd` | `20.0` | All tasks stop once today's spend reaches this |
 
-Type `/budget` in any chat to see today's spend and the current task's spend, projection and limits.
+Type `/forecast` in any chat to see today's spend and the current task's spend, projection and limits.
 
 ## Install
 

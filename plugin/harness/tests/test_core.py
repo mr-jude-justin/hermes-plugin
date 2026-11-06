@@ -171,10 +171,10 @@ def test_unpriced_model_never_quotes(tmp_path):
     assert h.pre_llm_call(session_id="s", user_message="hi", model="local-llama") is None
 
 
-def test_budget_command(tmp_path):
+def test_forecast_command(tmp_path):
     h, _, _ = make(tmp_path)
     h.pre_llm_call(session_id="s", user_message="hi", model="m")
-    text = h.budget_command("", session_id="s")
+    text = h.forecast_command("", session_id="s")
     assert "Spent today" in text and "Current task (running)" in text
 
 

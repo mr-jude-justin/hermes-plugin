@@ -422,9 +422,9 @@ class Harness:
         except Exception:
             log.exception("end of turn failed")
 
-    # --- /budget -----------------------------------------------------------------------------
+    # --- /forecast ---------------------------------------------------------------------------
 
-    def budget_command(self, raw_args: str = "", *, session_id: str = "", **_: Any) -> str:
+    def forecast_command(self, raw_args: str = "", *, session_id: str = "", **_: Any) -> str:
         s = self.settings()
         lines = [f"💰 Spent today: {messages.usd(self.store.spent_today())} of {messages.usd(s.daily_cap_usd)} daily cap."]
         run = self._run_for(session_id) or self.stopped.get(session_id)
