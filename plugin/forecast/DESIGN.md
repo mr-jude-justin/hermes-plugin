@@ -158,7 +158,7 @@ h 的冷启动值：模型名里含 claude/anthropic 时取 0.9（实测后续�
 | **agentic_coding**：改代码、修 bug、实现功能 | L | 3k | 1k | 步数多，有阶段，最难预测 |
 | **research**：联网查资料 | M | 8k | 1.5k | 网页内容大，g 波动大 |
 | **generation**：生成图片等 | S | 0.5k | 0.3k | 主要成本在 `per_call_units` |
-| **delegated**：派子 agent 并行做 | L | 3k | 1k | 每个子 agent 单独算一段，各自从 52.6k 的底数开始、缓存为冷（见 2.4） |
+| **delegated**：派子 agent 并行做 | M | 3k | 1k | 每个子 agent 单独算一段，各自从 52.6k 的底数开始、缓存为冷（见 2.4） |
 | **browser**：靠截图操作网页或桌面 | M | 1.5k | 0.5k | 截图每张约 1–2k 且会累积；有博客实测 45 倍于 API 方式（未经同行评审） |
 | **long_doc**：读大量文档后回答 | M | 2k | 1.5k | 步数少但 L_1 巨大，按"长上下文信号"升档 |
 
@@ -206,6 +206,8 @@ h 的冷启动值：模型名里含 claude/anthropic 时取 0.9（实测后续�
   - 路径：code_reasoning 和 agentic_coding 各 +0.3
   - URL：research +0.5/个，最多 3 个
   - 附件：long_doc +0.7（1 个）或 +1.5（多个）
+  - 代码标识符（`name()`、snake_case、camelCase）：agentic_coding +0.5，code_reasoning +0.3
+  - "解释 / 为什么 / explain / how does" 这类泛用词，**只有在有代码上下文时**（代码块、路径、标识符、git 仓库，或者"代码 / 函数 / file / bug"等名词）才给 code_reasoning +1，否则不加分。所以 "Explain TCP vs UDP" 会判成 chat
   - 在 git 仓库里，且已经有编程关键词：agentic_coding 和 code_reasoning 各 +0.3；如果有代码块，coding_chat −0.5
 - 工具集只作弱支持（+0.3），而且**必须已经有关键词命中才加分**，因为每条消息都会带着全部工具集。实测中 Hermes 并不把 `enabled_toolsets` 传给 hook，所以这一项目前基本不起作用。
 
@@ -216,11 +218,14 @@ h 的冷启动值：模型名里含 claude/anthropic 时取 0.9（实测后续�
 | 范围大："整个 / 从零 / 所有 / entire / from scratch …" | +1 |
 | 范围小："简单 / 一行 / quick / typo / just …" | −1 |
 | 编程类型，且消息里有 3 个以上路径 | +1 |
+| code_reasoning，消息里最多 1 个路径，且没有"范围大"的说法（单文件） | −1 |
 | agentic_coding 或 code_reasoning，且仓库超过 5 万行 | +0.5 |
 | 消息超过 1500 token（详细需求） | +0.5 |
 | long_doc，且附件 ≥ 3 个 | +1 |
 | `context_tokens_now` 超过 150k | +1 |
 | **agentic_coding，不在 git 仓库里，消息里也没有路径（独立脚本）** | −1；消息不到 20 token 时再 −0.5 |
+
+**第一批真实数据（Justin，Sonnet，7 个任务，11/6）带来的修正**：单文件的解释只用了 2 次调用，所以单文件的 code_reasoning 降一档；"add in_stock() + 一行检查"原来被判成 chat，所以补了标识符信号和"add … function/check"的说法；"Explain TCP vs UDP"原来被判成 code_reasoning / M，所以泛用的解释词改成需要代码上下文；派子 agent 时主 agent 主要是在协调，默认档从 L 降到 M。这些案例都写进了 `tests/test_eval_regressions.py`。
 
 "独立脚本"这一条来自 Justin 的第一次实测：Haiku 收到 "write a fib script, save and run it"，只用了 2 次调用。修正前这句话被判成 chat，补上英文规则后又变成 L 级 20 步，加了这一条后才变成 S 级。
 
@@ -276,7 +281,7 @@ L1：类型、档次、步数先验 K、形状 (g, o, h)、子 agent 段
 - **必须和草稿比，不能和自己的输出比**：如果拿"实际 / 已校准的预测"来估偏差，预测越准，算出的偏差就越小，校准量又被拉回去。模拟中，用户任务比默认便宜 3 倍时，修正前 P50 仍偏差 1.74 倍，修正后只偏差 1.05 倍。
 - **P90**：对去掉偏差后的残差取 conformal 分位数（第 ⌈(n+1)q⌉ 小的值）。分位水平用 ACI 在线调整：按时间顺序重放全部记录，α ← α + 0.05·(0.1 − 是否超出 P90)，α 限制在 [0.005, 0.5]。数据少时按 n/(n+10) 和先验宽度混合，且 P90 至少是 P50 的 1.3 倍。
 - **被拦停的任务（stopped）**：不参与偏差估计；只有在被拦停时已经超过 P90，才算一次未覆盖，否则跳过（右删失）。
-- **怎么应用**：用二分法反解出能得到目标总量的步数 K。这样 `shape` 和 `projected_steps` 与校准后的总量保持一致，harness 计价时用的就是校准后的结果。
+- **怎么应用**：主 agent 和子 agent 两部分按**同一个系数**缩放（只缩放主 agent 曾导致派子 agent 的任务步数塌到 0.1，Justin 的实测里发现）。主 agent 部分用二分法反解出能得到目标总量的步数 K，且至少 1 步；`shape.subagents` 里的子 agent 个数也按同样的系数缩放。这样 `shape` 和 `projected_steps` 与校准后的总量保持一致，harness 计价时用的就是校准后的结果。
 - **生效条件**：完成的任务至少 3 个。只作用于开工前的预测，不作用于 reforecast。
 - **模拟验证**（每组 160 个任务，统计后一半，见 `test_calibration.py`）：
 
