@@ -201,3 +201,19 @@ def test_estimate_cost_is_billed_once_and_counts_toward_the_task(tmp_path):
     h.pre_llm_call(session_id="s", user_message="hi", model="m")
     assert store.spent_today() == pytest.approx(0.002)
     assert h.runs["s"].spent == pytest.approx(0.002)
+
+
+def test_subagent_turns_belong_to_the_parent_task(tmp_path):
+    h, store, _ = make(tmp_path, estimate_usd=2.0, quote_threshold_usd=0.5)
+    h.pre_llm_call(session_id="p", user_message="big job", model="m")
+    h.pre_llm_call(session_id="p", user_message="continue", model="m")
+    h.subagent_start(parent_session_id="p", child_session_id="c")
+    # The child's own turn is neither quoted nor tracked as its own task.
+    assert h.pre_llm_call(session_id="c", user_message="write a haiku", model="m") is None
+    assert "c" not in h.runs
+    call(h, "c", 0.3)
+    h.post_llm_call(session_id="c")
+    assert "p" in h.runs and h.runs["p"].spent == pytest.approx(0.3)
+    h.post_llm_call(session_id="p")
+    (task,) = [t for t in store.load() if t.outcome == "completed"]
+    assert task.features.subagents[0].usage.input_tokens == 30000

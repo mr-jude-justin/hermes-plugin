@@ -179,6 +179,11 @@ class Harness:
         s = self.settings()
         if not s.enabled or not sid:
             return None
+        with self._lock:
+            if sid in self.parent_of:
+                # A subagent's own turn: it belongs to the parent's task, which was already
+                # quoted. Never quote it (nobody can answer) and never start a separate run.
+                return None
         reply = replies.parse(message)
 
         # 1. A hard-stopped task waiting for the user.
@@ -419,6 +424,8 @@ class Harness:
     def _end_turn(self, sid: str, interrupted: bool) -> None:
         try:
             with self._lock:
+                if sid in self.parent_of:  # a subagent finishing is not the end of the task
+                    return
                 run = self.runs.pop(sid, None)
                 if run is None:
                     return
