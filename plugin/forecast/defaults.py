@@ -32,10 +32,18 @@ HERMES_FLOOR_TOKENS: int = 70_000
 # about 52.6k tokens (Justin's probe), so each subagent pays its own floor.
 SUBAGENT_FLOOR_TOKENS: int = 52_600
 
+# Even a new session's first call reads ~20k from cache: the tool-schema prefix is
+# shared across sessions within the provider's cache TTL (Justin's probe). Only the
+# very first task of a run pays a fully cold first call.
+SHARED_PREFIX_TOKENS: int = 20_000
+
 # Delegated tasks: how many subagents to expect when the message gives no count
-# (P50, P90), and how many steps each one runs (tier M). Guesses.
+# (P50, P90), how many steps each one runs, and its per-step shape. Justin's
+# eval: each child made ~2 calls from its ~52k floor. Guesses beyond that.
 SUBAGENTS_DEFAULT: tuple[float, float] = (2.0, 4.0)
-SUBAGENT_STEPS: tuple[float, float] = (8.0, 20.0)
+SUBAGENT_STEPS: tuple[float, float] = (3.0, 8.0)
+SUBAGENT_GROWTH: float = 1_000
+SUBAGENT_OUTPUT: float = 400
 
 TASK_TYPES: tuple[str, ...] = (
     "chat",
@@ -59,21 +67,27 @@ class TypeShape:
     default_tier: str
 
 
+# Refit to Justin's real Hermes + Sonnet runs (11/6, cold start, 7 tasks): the
+# prompt grew ~250-700 tokens/step (more on file reads; +7.6k when a long doc was
+# read); output was 64-190 tokens on tool steps and ~550-610 on answers. The
+# first guesses (g 3-8k, o ~1k) came from SWE-bench-style harnesses and made
+# each step ~3x too expensive. Research/browser keep larger g (pages, screenshots).
 TYPE_SHAPES: dict[str, TypeShape] = {
-    "chat": TypeShape(growth=1_000, output=500, default_tier="S"),
-    "coding_chat": TypeShape(growth=1_500, output=1_500, default_tier="S"),
-    "code_reasoning": TypeShape(growth=6_500, output=1_000, default_tier="M"),
-    "agentic_coding": TypeShape(growth=3_000, output=1_000, default_tier="L"),
-    "research": TypeShape(growth=8_000, output=1_500, default_tier="M"),
-    "generation": TypeShape(growth=500, output=300, default_tier="S"),
+    "chat": TypeShape(growth=300, output=550, default_tier="S"),
+    "coding_chat": TypeShape(growth=400, output=600, default_tier="S"),
+    "code_reasoning": TypeShape(growth=2_000, output=350, default_tier="M"),
+    "agentic_coding": TypeShape(growth=700, output=200, default_tier="M"),
+    "research": TypeShape(growth=4_000, output=400, default_tier="M"),
+    "generation": TypeShape(growth=300, output=200, default_tier="S"),
     # The main agent mostly coordinates; subagents are added as their own segments.
-    "delegated": TypeShape(growth=3_000, output=1_000, default_tier="M"),
-    "browser": TypeShape(growth=1_500, output=500, default_tier="M"),
-    "long_doc": TypeShape(growth=2_000, output=1_500, default_tier="M"),
+    "delegated": TypeShape(growth=600, output=250, default_tier="M"),
+    "browser": TypeShape(growth=1_500, output=150, default_tier="M"),
+    "long_doc": TypeShape(growth=4_000, output=550, default_tier="M"),
 }
 
-# Fraction of the reused prefix that is billed as a cache read.
-CACHE_HIT_ANTHROPIC: float = 0.9
+# Fraction of the reused prefix that is billed as a cache read. Real Hermes calls
+# after the first write only ~400 new tokens of a ~67k prompt: effective ~0.99.
+CACHE_HIT_ANTHROPIC: float = 0.98
 CACHE_HIT_UNKNOWN: float = 0.0
 
 # Multiplier on per-step output tokens. 2604.22750 has no effort sweep, so these

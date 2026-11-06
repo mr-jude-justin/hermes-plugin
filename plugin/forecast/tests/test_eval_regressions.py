@@ -18,7 +18,9 @@ def feat(message, repo=False):
 @pytest.mark.parametrize("message,repo,want_type,want_tier", [
     ("Explain TCP vs UDP in 3 bullets", False, "chat", "S"),              # real: 1 call
     ("read inventory.py and explain the bug", True, "code_reasoning", "S"),  # real: 2 calls
-    ("write a palindrome function, code only", False, "agentic_coding", "S"),  # real: 2 calls
+    ("write a palindrome function, code only", False, "coding_chat", "S"),  # real: 2 calls
+    ("Write a Python function is_palindrome(s). Code only.", True, "coding_chat", "S"),  # same, asked in a repo
+    ("Explain TCP vs UDP in 3 bullets ", True, "chat", "S"),  # being in a repo is not code context
     ("add in_stock() and a one-line check", True, "agentic_coding", "M"),  # real: 6 calls (was chat/S)
     ("use 2 subagents to each write a haiku", False, "delegated", "M"),   # main agent no longer L
 ])

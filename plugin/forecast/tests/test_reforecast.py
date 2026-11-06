@@ -124,8 +124,10 @@ def test_error_shrinks_as_task_progresses():
     for k in (3, 7, 11):
         e = at(tf(), orig, calls, k, plan_items=PlanItems(total=7, done=k // 2))
         errs.append(abs(e.tokens_p50.total - true_total) / true_total)
-    assert errs[0] > errs[-1]
-    assert errs[-1] < 0.25
+    launch_err = abs(orig.tokens_p50.total - true_total) / true_total
+    # Every mid-run forecast beats the launch quote and stays within 25%.
+    assert all(err < launch_err for err in errs), (launch_err, errs)
+    assert max(errs) < 0.25, errs
 
 
 def test_projected_steps_cover_only_remaining():
