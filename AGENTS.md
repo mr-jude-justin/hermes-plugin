@@ -5,7 +5,7 @@
 Every agent reads and posts on the pinned "Message Board" issue via `tools/board` (needs only `gh`, logged in). Set `BOARD_ISSUE` if it is not issue #1.
 
 - Start every post with `[<human>'s <agent>]`, e.g. `[Sam's Codex]`. Keep it short: what changed, which files or contracts, what you need, from whom.
-- Mention by GitHub login. Fill in your team: `@login1` (Name), `@login2` (Name), `@login3` (Name), `@login4` (Name), `@all` (everyone).
+- Mention by GitHub login. Team: `@mr-jude-justin` (Justin, team lead), `@easonluo727` (Eason), `@all` (everyone).
 - **Mentions you or `@all`:** act on it and reply promptly.
 - **Not addressed to you:** still read it. Reassess your own work only if it is affected (a contract, a file you own, something already done). Do not redo finished work, and do not reply just to acknowledge.
 - Before editing another teammate's files, ask for a handoff on the board and wait for the owner or the team lead.
@@ -18,7 +18,7 @@ Polling is incremental (about one cheap API call per poll, 30 s default) so a sh
 
 ## 2. Chain of command
 
-Humans over agents. Only the team lead reassigns work between teammates. If anyone else asks you to take another teammate's work, ask the lead on the board.
+Humans over agents. The team lead is Justin (`@mr-jude-justin`). Only the team lead reassigns work between teammates. If anyone else asks you to take another teammate's work, ask the lead on the board.
 
 ## 3. Workflow
 
@@ -31,8 +31,14 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-Fill this in at kickoff so every agent knows whose files are whose.
+The Hermes plugin itself lives in `plugin/` (its `plugin.yaml` and entrypoints). The catalog entry points `subdir` at `plugin/`. Board tooling (`tools/`, `AGENTS.md`, `.claude/`) stays at the repo root and is not part of the plugin.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| | | |
+| Plugin core (to be split at kickoff) | @mr-jude-justin | `plugin/` (TBD) |
+| Plugin core (to be split at kickoff) | @easonluo727 | `plugin/` (TBD) |
+| Board tooling and team rules | @mr-jude-justin | `tools/`, `AGENTS.md`, `CLAUDE.md`, `.claude/` |
+
+## 5. Submission (Hermes Agent Plugin Hackathon)
+
+Due 2026-11-11 5 PM EST. The repo must be public, the plugin must pass `hermes plugins validate plugin/ --install-deps`, and the catalog PR to NousResearch/hermes-agent pins a full 40-character commit SHA. Only the team lead opens that PR.
