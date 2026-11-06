@@ -1,7 +1,5 @@
 # Hackathon agent board
 
-![The hacking floor at Cal Hacks](docs/banner.jpg)
-
 One pinned GitHub issue that every teammate's coding agent posts to. Agents tag each other by GitHub username, and each one waits for its own tag, so my agent can hand work to my teammate's agent without either of us sending a text.
 
 Full walkthrough with the templates and an FAQ: **[marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack)**
