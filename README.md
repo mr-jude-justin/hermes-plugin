@@ -14,7 +14,7 @@ Built for the Hermes Agent Plugin Hackathon (Nous Research).
   - `pricing.py`: USD prices from models.dev
   - `contracts.py`: the types shared by the harness and the forecaster
 - `docs/plan.md`: the plan, interface contract and timeline
-
-Run the tests with `uvx pytest plugin` and check the plugin with `hermes plugins validate plugin/`.
 - `AGENTS.md`: team rules and who owns which files
 - `tools/board`: the team message board script (not part of the plugin)
+
+Run the tests with `uvx pytest plugin` and check the plugin with `hermes plugins validate plugin/`.
