@@ -24,6 +24,8 @@ _TYPE_LABEL = {
 def usd(x: Optional[float]) -> str:
     if x is None:
         return "?"
+    if x < 0.095:
+        return f"${x:.3f}"
     return f"${x:.2f}" if x < 10 else f"${x:.0f}"
 
 
@@ -31,7 +33,13 @@ def _range(e: Estimate) -> str:
     if e.cost_usd_p50 is None:
         total = e.tokens_p50.total
         return f"about {total / 1000:.0f}k tokens (no price data for this model)"
-    return f"{usd(e.cost_usd_p50)}–{usd(e.cost_usd_p90)}"
+    low, high = usd(e.cost_usd_p50), usd(e.cost_usd_p90)
+    return low if low == high else f"{low}–{high}"
+
+
+def _steps(n: float) -> str:
+    n = max(1, round(n or 0))
+    return f"{n} step" if n == 1 else f"{n} steps"
 
 
 def quote(e: Estimate, cap_usd: float, price_source: str) -> str:
@@ -40,7 +48,7 @@ def quote(e: Estimate, cap_usd: float, price_source: str) -> str:
     if e.cost_usd_p90 is not None and e.cost_usd_p90 > cap_usd:
         over = f" That can go over your {usd(cap_usd)} per-task cap."
     return (
-        f"💰 Cost estimate: {kind}, tier {e.tier}, likely {_range(e)} (about {e.est_steps:.0f} steps).{over}\n"
+        f"💰 Cost estimate: {kind}, tier {e.tier}, likely {_range(e)} (about {_steps(e.est_steps)}).{over}\n"
         f"Basis: {e.basis or 'rules'}. Prices: {price_source}.\n"
         f"Reply **continue** to run it, **cancel** to drop it, or **cap $N** to set this task's cap."
     )

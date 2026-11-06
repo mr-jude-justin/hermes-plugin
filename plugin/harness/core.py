@@ -81,7 +81,11 @@ class Run:
 
 
 def _round_up(x: float) -> float:
-    return float(math.ceil(x)) if x >= 1 else math.ceil(x * 10) / 10
+    """Round up to two significant digits: 0.0204 -> 0.021, 4.83 -> 4.9, 13.2 -> 14."""
+    if x <= 0:
+        return 0.0
+    step = 10 ** (math.floor(math.log10(x)) - 1)
+    return round(math.ceil(round(x / step, 9)) * step, 10)
 
 
 class Harness:

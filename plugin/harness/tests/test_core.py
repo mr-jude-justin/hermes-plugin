@@ -217,3 +217,14 @@ def test_subagent_turns_belong_to_the_parent_task(tmp_path):
     h.post_llm_call(session_id="p")
     (task,) = [t for t in store.load() if t.outcome == "completed"]
     assert task.features.subagents[0].usage.input_tokens == 30000
+
+
+@pytest.mark.parametrize("x,expected", [(0.0204, 0.021), (4.83, 4.9), (13.2, 14), (0.1, 0.1), (1.0, 1.0)])
+def test_round_up_keeps_two_significant_digits(x, expected):
+    from harness.core import _round_up
+    assert _round_up(x) == pytest.approx(expected)
+
+
+def test_small_amounts_display():
+    from harness.messages import usd
+    assert (usd(0.005), usd(0.0204), usd(0.5), usd(12.4)) == ("$0.005", "$0.020", "$0.50", "$12")
