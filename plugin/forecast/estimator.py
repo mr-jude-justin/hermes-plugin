@@ -20,6 +20,7 @@ except ImportError:  # imported as top-level `forecast` (forecast tests)
 
 from . import defaults as D
 from . import history as H
+from . import l3 as L3
 from . import midtask as RF
 from .features import message_of
 from .rules import L1Result, classify
@@ -27,13 +28,22 @@ from .tokens import TokenSplit, project, step_splits
 
 _index: Optional[H.L2Index] = None
 _history: Any = None
+_llm: Any = None
+_l3_mode: str = "auto"
 
 
-def configure(state: Any, history: Any = None) -> None:
-    """Bind the harness-provided storage. Does no I/O."""
-    global _index, _history
+def configure(state: Any, history: Any = None, llm: Any = None, l3_mode: str = "auto") -> None:
+    """Bind the harness-provided storage and (optionally) the cheap-model callable.
+
+    Does no I/O. `llm(prompt, *, max_tokens, timeout_s) -> (text, cost_usd) | None`;
+    `llm=None` turns L3 off. `l3_mode`: "auto" (only when L1/L2 are unsure),
+    "always" (every non-empty message, for demos) or "off".
+    """
+    global _index, _history, _llm, _l3_mode
     _index = H.L2Index(state) if state is not None else None
     _history = history
+    _llm = llm
+    _l3_mode = l3_mode if l3_mode in ("auto", "always", "off") else "auto"
 
 
 def _resolve_index(state: Any) -> Optional[H.L2Index]:
@@ -135,11 +145,12 @@ def _solve_steps(target: float, start: float, g: float, o: float, h: float, warm
     return (lo + hi) / 2
 
 
-def estimate(features: Any, state: Any = None) -> Estimate:
+def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optional[str] = None) -> Estimate:
     """Pre-task forecast. `features` is a `contracts.TaskFeatures` (a dict also works).
 
-    L1 rules → L2 history (if similar past tasks exist) → calibration (if enough
-    finished tasks exist).
+    L1 rules → L2 history (if similar past tasks exist) → L3 cheap model (if
+    enabled and L1/L2 are unsure) → calibration (if enough finished tasks exist).
+    `llm` / `l3_mode` override what `configure` set (used by tests).
     """
     r = classify(features)
     idx = _resolve_index(state)
@@ -147,16 +158,44 @@ def estimate(features: Any, state: Any = None) -> Estimate:
     # Draft: main-agent steps and shape, from L1 or L2.
     k50, k90 = r.steps_p50, r.steps_p90
     g, o, h = r.growth, r.output_per_step, r.cache_hit
+    task_type = r.task_type
+    units = dict(r.per_call_units)
     layer, basis, confidence = "L1", r.basis, r.confidence
+    has_neighbours = False
     if idx is not None:
         neigh = idx.neighbours(message_of(features), r.task_type)
         b = H.blend(neigh, r.steps_p50, r.steps_p90, r.growth, r.output_per_step, r.cache_hit)
         if b is not None:
+            has_neighbours = True
             k50, k90 = b.steps_p50, b.steps_p90
             g, o, h = b.growth, b.output_per_step, b.cache_hit
             layer = "L2"
             basis = f"{b.n} similar past task{'s' if b.n != 1 else ''} (top sim {b.top_sim:.2f}, weight {b.lam:.2f}) + {r.basis}"
             confidence = round(min(0.8, max(r.confidence, 0.25 + 0.5 * b.lam)), 2)
+
+    # L3: a cheap model's step guess, as one more signal (l3.py).
+    l3_cost, l3_steps = 0.0, None
+    use_llm = llm if llm is not None else _llm
+    # The harness's llm carries a live `.mode`, so a settings change applies
+    # without a restart; an explicit argument wins.
+    mode = l3_mode or getattr(use_llm, "mode", None) or _l3_mode
+    if use_llm is not None and L3.should_run(mode, message_of(features), r.confidence, has_neighbours):
+        guess = L3.ask(use_llm, features)
+        if guess is not None:
+            l3_cost, l3_steps = guess.cost_usd, guess.steps_p50
+            corr = L3.correction(idx.records if idx is not None else [])
+            k50, k90 = L3.blend_steps(k50, k90, guess, corr)
+            if guess.task_type and r.confidence <= L3.TYPE_OVERRIDE_MAX_L1_CONFIDENCE and guess.task_type != task_type:
+                # L1 was unsure what kind of task this is; take the model's reading
+                # and move halfway to that type's per-step shape.
+                shp = D.TYPE_SHAPES[guess.task_type]
+                g, o = (g + shp.growth) / 2, (o + shp.output) / 2
+                task_type = guess.task_type
+            if task_type == "generation" and guess.images > units.get("image_gen", 1):
+                units["image_gen"] = guess.images
+            if layer == "L1":
+                layer = "L3"
+            basis = f"cheap model ~{guess.steps_p50:g} steps (x{corr:.2f} corrected, weight {L3.W_L3}) + {basis}"
 
     # Subagent segments from L1 (delegated tasks) sit on top of the main agent.
     l1main50 = project(r.steps_p50, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
@@ -172,12 +211,12 @@ def estimate(features: Any, state: Any = None) -> Estimate:
     draft90 = project(k90, *args).total + extra90.total
     cal = idx.calibration() if idx is not None else None
     if cal is not None and cal.active:
-        t50 = draft50 * math.exp(cal.bias(r.task_type))
+        t50 = draft50 * math.exp(cal.bias(task_type))
         t90 = t50 * math.exp(cal.spread(math.log(max(draft90, draft50 * 1.01) / draft50)))
         k50 = _solve_steps(max(1.0, t50 - extra50.total), *args)
         k90 = max(k50 * 1.05, _solve_steps(max(1.0, t90 - extra90.total), *args))
         # layer_used keeps the contract's L1 | L2 | L3 values; calibration shows in basis.
-        basis = f"{basis}; {cal.describe(r.task_type)}"
+        basis = f"{basis}; {cal.describe(task_type)}"
 
     p50 = project(k50, r.start_prompt, g, o, h, r.warm_cache) + extra50
     p90 = project(k90, r.start_prompt, g, o, h, r.warm_cache) + extra90
@@ -186,18 +225,20 @@ def estimate(features: Any, state: Any = None) -> Estimate:
     # against its own output (otherwise the correction would undo itself).
     shape["draft_p50"] = round(draft50)
     shape["draft_p90"] = round(draft90)
+    if l3_steps is not None:
+        shape["l3_steps"] = l3_steps  # raw guess, so its bias can be learned
     return _build(
         tier=H.tier_for_steps(k50),
-        task_type=r.task_type,
+        task_type=task_type,
         tokens_p50=_tokens(p50),
         tokens_p90=_tokens(p90),
-        per_call_units=dict(r.per_call_units),
+        per_call_units=units,
         est_steps=round(k50, 1),
         est_steps_p90=round(k90, 1),
         confidence=confidence,
         basis=basis,
         layer_used=layer,
-        estimate_cost_usd=0.0,
+        estimate_cost_usd=round(l3_cost, 6),
         shape=shape,
     )
 

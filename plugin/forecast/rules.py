@@ -300,8 +300,12 @@ def classify(features: Any) -> L1Result:
         units["image_gen"] = _image_units(msg)
 
     # L1 alone is a weak predictor (DESIGN.md section 0), so confidence stays low.
-    if task_type == "chat" and len(sigs) == 0 and msg_tokens < 40:
+    # A very short signal-free message is surely chat; a longer one may be a vague
+    # task request ("take care of the payment thing"), which is where L3 helps.
+    if task_type == "chat" and len(sigs) == 0 and msg_tokens < 10:
         confidence = 0.5
+    elif task_type == "chat" and len(sigs) == 0:
+        confidence = 0.3
     else:
         confidence = round(min(0.45, 0.25 + 0.2 * margin), 2)
 

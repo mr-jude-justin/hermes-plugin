@@ -102,6 +102,7 @@ def make_record(features: Any, task_type: str, actual: Any, steps: int, outcome:
         "p90": round(_est_total(estimate, "tokens_p90")),
         "d50": round(_draft(estimate, "draft_p50") or _est_total(estimate, "tokens_p50")),
         "d90": round(_draft(estimate, "draft_p90") or _est_total(estimate, "tokens_p90")),
+        "l3k": _draft(estimate, "l3_steps"),  # cheap-model step guess, 0 if L3 did not run
         "outcome": outcome,
         "ts": time.time(),
     }
