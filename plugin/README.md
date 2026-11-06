@@ -103,7 +103,9 @@ hermes auth add anthropic --api-key <your Anthropic Console key>
 - **Stops happen between steps.** A model call that has already started runs to the end, so a task can go slightly over a limit on its last call.
 - **`/yolo` and `approvals.mode: off` auto-approve the soft cap.** The hard limit and the daily cap still apply.
 - **Cron, webhook and API-server runs get no quote,** because nobody is there to reply. The hard limit and the daily cap still stop them.
-- **Image generation and other per-call charges** are counted but not yet priced.
+- **Image generation and other per-call charges** are counted but not yet priced. The same goes for provider-side tool fees, such as Anthropic's per-search web search charge.
+- **Cache writes are priced at the standard (5-minute) rate.** Anthropic charges more for 1-hour cache writes and 1.1x for US-only inference; neither is reflected yet.
+- **Prices for Anthropic's current models were checked against the official pricing page on 2026-11-06.** Other providers' prices come from models.dev as published.
 
 ## What the plugin does on your machine
 
