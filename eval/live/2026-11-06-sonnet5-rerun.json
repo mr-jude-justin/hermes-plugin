@@ -1,0 +1,958 @@
+{
+ "run": "2026-11-06 rerun after #55, cold start (history and l2_records wiped)",
+ "hermes": "v0.23.0",
+ "provider": "anthropic",
+ "model": "claude-sonnet-5",
+ "setup": "one new hermes session per task (hermes chat -Q -m claude-sonnet-5), each in its own copy of a git repo holding a 17-line inventory.py; long_doc reads Hermes' 1,721-word README",
+ "note": "prompts are the eval prompts we wrote, not user data; the harness stores no message text",
+ "tasks": [
+  {
+   "name": "chat",
+   "prompt": "What's the difference between TCP and UDP? Answer in 3 short bullet points.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "S",
+    "task_type": "chat",
+    "tokens_p50": {
+     "input": 7002,
+     "cache_read": 63016,
+     "cache_write": 71018,
+     "output": 1000
+    },
+    "tokens_p90": {
+     "input": 21305,
+     "cache_read": 191749,
+     "cache_write": 73018,
+     "output": 2000
+    },
+    "per_call_units": {},
+    "est_steps": 2.0,
+    "est_steps_p90": 4.0,
+    "confidence": 0.45,
+    "basis": "rules: effort medium",
+    "layer_used": "L1",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.21415220000000001,
+    "cost_usd_p90": 0.2835066,
+    "shape": {
+     "start_prompt": 70018,
+     "growth": 1000.0,
+     "output_per_step": 500.0,
+     "cache_hit": 0.9,
+     "warm_cache": false,
+     "draft_p50": 142036,
+     "draft_p90": 288072
+    }
+   },
+   "actual": {
+    "input_tokens": 2,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 66362,
+    "output_tokens": 178,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 66364,
+    "calls": 1,
+    "cost_usd": 0.167689,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 0,
+     "cache_write_tokens": 66362,
+     "output_tokens": 178,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66364,
+     "calls": 1,
+     "cost_usd": 0.167689,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [],
+   "subagents": [],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 0,
+    "plan_items": null
+   }
+  },
+  {
+   "name": "coding_chat",
+   "prompt": "Write a Python function that checks whether a string is a palindrome, ignoring case and spaces. Just the code, no explanation.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "M",
+    "task_type": "agentic_coding",
+    "tokens_p50": {
+     "input": 55322,
+     "cache_read": 497895,
+     "cache_write": 91031,
+     "output": 8000
+    },
+    "tokens_p90": {
+     "input": 184359,
+     "cache_read": 1659230,
+     "cache_write": 127031,
+     "output": 20000
+    },
+    "per_call_units": {},
+    "est_steps": 8.0,
+    "est_steps_p90": 20.0,
+    "confidence": 0.37,
+    "basis": "rules: agentic_coding keywords, small scope, effort medium",
+    "layer_used": "L1",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.5177987,
+    "cost_usd_p90": 1.2181379,
+    "shape": {
+     "start_prompt": 70031,
+     "growth": 3000.0,
+     "output_per_step": 1000.0,
+     "cache_hit": 0.9,
+     "warm_cache": false,
+     "draft_p50": 652248,
+     "draft_p90": 1990620
+    }
+   },
+   "actual": {
+    "input_tokens": 4,
+    "cache_read_tokens": 86457,
+    "cache_write_tokens": 46744,
+    "output_tokens": 273,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 133205,
+    "calls": 2,
+    "cost_usd": 0.1368894,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 46305,
+     "output_tokens": 209,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66383,
+     "calls": 1,
+     "cost_usd": 0.1218717,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66381,
+     "cache_write_tokens": 439,
+     "output_tokens": 64,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66822,
+     "calls": 1,
+     "cost_usd": 0.0150177,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "write_file",
+     "ok": true,
+     "path": "<task-dir>/palindrome.py",
+     "error": null
+    }
+   ],
+   "subagents": [],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 0,
+    "plan_items": null
+   }
+  },
+  {
+   "name": "code_reasoning",
+   "prompt": "Read inventory.py in the current directory and explain one bug or missing edge case in it. Do not change any files.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "S",
+    "task_type": "code_reasoning",
+    "tokens_p50": {
+     "input": 7003,
+     "cache_read": 63025,
+     "cache_write": 76528,
+     "output": 2000
+    },
+    "tokens_p90": {
+     "input": 22958,
+     "cache_read": 206626,
+     "cache_write": 89528,
+     "output": 4000
+    },
+    "per_call_units": {},
+    "est_steps": 2.0,
+    "est_steps_p90": 4.0,
+    "confidence": 0.38,
+    "basis": "rules: 1 path(s), code_reasoning keywords, single file, effort medium",
+    "layer_used": "L1",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.237931,
+    "cost_usd_p90": 0.351063,
+    "shape": {
+     "start_prompt": 70028,
+     "growth": 6500.0,
+     "output_per_step": 1000.0,
+     "cache_hit": 0.9,
+     "warm_cache": false,
+     "draft_p50": 148556,
+     "draft_p90": 323112
+    }
+   },
+   "actual": {
+    "input_tokens": 4,
+    "cache_read_tokens": 86453,
+    "cache_write_tokens": 46650,
+    "output_tokens": 624,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 133107,
+    "calls": 2,
+    "cost_usd": 0.1401636,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 46301,
+     "output_tokens": 69,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66379,
+     "calls": 1,
+     "cost_usd": 0.12046169999999999,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66377,
+     "cache_write_tokens": 349,
+     "output_tokens": 555,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66728,
+     "calls": 1,
+     "cost_usd": 0.0197019,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "inventory.py",
+     "error": null
+    }
+   ],
+   "subagents": [],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 0,
+    "plan_items": null
+   }
+  },
+  {
+   "name": "agentic_small",
+   "prompt": "In the current directory, add a method in_stock(name) to the Inventory class in inventory.py that returns True if the item has quantity > 0, then run a one-line Python check to show it works.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "M",
+    "task_type": "agentic_coding",
+    "tokens_p50": {
+     "input": 33133,
+     "cache_read": 336975,
+     "cache_write": 83415,
+     "output": 5485
+    },
+    "tokens_p90": {
+     "input": 73303,
+     "cache_read": 745505,
+     "cache_write": 97151,
+     "output": 10167
+    },
+    "per_call_units": {},
+    "est_steps": 5.9,
+    "est_steps_p90": 11.0,
+    "confidence": 0.36,
+    "basis": "1 similar past task (top sim 0.23, weight 0.10) + rules: agentic_coding keywords, 1 path(s), code identifier, small scope, effort medium; calibrated x0.84, P90 level 0.89 (n=3)",
+    "layer_used": "L2",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.3965877,
+    "cost_usd_p90": 0.6424209,
+    "shape": {
+     "start_prompt": 70047,
+     "growth": 2722.3,
+     "output_per_step": 927.9,
+     "cache_hit": 0.9105,
+     "warm_cache": false,
+     "draft_p50": 546781,
+     "draft_p90": 1333574
+    }
+   },
+   "actual": {
+    "input_tokens": 12,
+    "cache_read_tokens": 356165,
+    "cache_write_tokens": 48003,
+    "output_tokens": 633,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 404180,
+    "calls": 6,
+    "cost_usd": 0.1975945,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 46323,
+     "output_tokens": 61,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66401,
+     "calls": 1,
+     "cost_usd": 0.1204367,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66399,
+     "cache_write_tokens": 342,
+     "output_tokens": 159,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66743,
+     "calls": 1,
+     "cost_usd": 0.0157288,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66741,
+     "cache_write_tokens": 618,
+     "output_tokens": 110,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67361,
+     "calls": 1,
+     "cost_usd": 0.0159972,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 67359,
+     "cache_write_tokens": 247,
+     "output_tokens": 145,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67608,
+     "calls": 1,
+     "cost_usd": 0.015543300000000001,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 67606,
+     "cache_write_tokens": 378,
+     "output_tokens": 68,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67986,
+     "calls": 1,
+     "cost_usd": 0.0151502,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 67984,
+     "cache_write_tokens": 95,
+     "output_tokens": 90,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 68081,
+     "calls": 1,
+     "cost_usd": 0.014738300000000001,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "inventory.py",
+     "error": null
+    },
+    {
+     "tool_name": "patch",
+     "ok": true,
+     "path": "inventory.py",
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"\", \"exit_code\": -1, \"error\": \"BLOCKED: Command flagged as dangerous (script execution via -e/-c flag) but single-query mode (-q) runs without a user present to approve it. Find an alternat"
+    },
+    {
+     "tool_name": "write_file",
+     "ok": true,
+     "path": "check_in_stock.py",
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"True False\", \"exit_code\": 0, \"error\": null}"
+    }
+   ],
+   "subagents": [],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 2,
+    "plan_items": null
+   }
+  },
+  {
+   "name": "agentic_medium",
+   "prompt": "In the current directory, write pytest tests for inventory.py in test_inventory.py covering add, remove (including the not-enough-stock error) and total. Run the tests with python -m pytest and fix anything that fails until they pass.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "L",
+    "task_type": "agentic_coding",
+    "tokens_p50": {
+     "input": 146304,
+     "cache_read": 1316737,
+     "cache_write": 117597,
+     "output": 16846
+    },
+    "tokens_p90": {
+     "input": 386304,
+     "cache_read": 3476738,
+     "cache_write": 168468,
+     "output": 33803
+    },
+    "per_call_units": {},
+    "est_steps": 16.8,
+    "est_steps_p90": 33.8,
+    "confidence": 0.36,
+    "basis": "rules: agentic_coding keywords, 2 path(s), code identifier, effort medium; calibrated x0.80, P90 level 0.88 (n=4)",
+    "layer_used": "L1",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 1.0156594,
+    "cost_usd_p90": 2.2269842,
+    "shape": {
+     "start_prompt": 70058,
+     "growth": 3000.0,
+     "output_per_step": 1000.0,
+     "cache_hit": 0.9,
+     "warm_cache": false,
+     "draft_p50": 1991160,
+     "draft_p90": 7227900
+    }
+   },
+   "actual": {
+    "input_tokens": 22,
+    "cache_read_tokens": 704559,
+    "cache_write_tokens": 50810,
+    "output_tokens": 1978,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 755391,
+    "calls": 11,
+    "cost_usd": 0.28776080000000004,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 46339,
+     "output_tokens": 66,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66417,
+     "calls": 1,
+     "cost_usd": 0.1205267,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66415,
+     "cache_write_tokens": 347,
+     "output_tokens": 654,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66764,
+     "calls": 1,
+     "cost_usd": 0.0206945,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66762,
+     "cache_write_tokens": 889,
+     "output_tokens": 61,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67653,
+     "calls": 1,
+     "cost_usd": 0.016188900000000003,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 67651,
+     "cache_write_tokens": 149,
+     "output_tokens": 73,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67802,
+     "calls": 1,
+     "cost_usd": 0.0146367,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 67800,
+     "cache_write_tokens": 160,
+     "output_tokens": 102,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67962,
+     "calls": 1,
+     "cost_usd": 0.014984,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 67960,
+     "cache_write_tokens": 474,
+     "output_tokens": 146,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 68436,
+     "calls": 1,
+     "cost_usd": 0.016241,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 68434,
+     "cache_write_tokens": 568,
+     "output_tokens": 146,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 69004,
+     "calls": 1,
+     "cost_usd": 0.016570800000000004,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 69002,
+     "cache_write_tokens": 881,
+     "output_tokens": 108,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 69885,
+     "calls": 1,
+     "cost_usd": 0.017086900000000002,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 69883,
+     "cache_write_tokens": 239,
+     "output_tokens": 201,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 70124,
+     "calls": 1,
+     "cost_usd": 0.016588099999999998,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 70122,
+     "cache_write_tokens": 332,
+     "output_tokens": 92,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 70456,
+     "calls": 1,
+     "cost_usd": 0.0157784,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 70454,
+     "cache_write_tokens": 432,
+     "output_tokens": 329,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 70888,
+     "calls": 1,
+     "cost_usd": 0.018464800000000003,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "inventory.py",
+     "error": null
+    },
+    {
+     "tool_name": "write_file",
+     "ok": true,
+     "path": "test_inventory.py",
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"<hermes-venv>/bin/python: No module named pytest\", \"exit_code\": 1, \"error\": null}"
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"<hermes-venv>/bin/python: No module named pip\", \"exit_code\": 1, \"error\": null}"
+    },
+    {
+     "tool_name": "terminal",
+     "ok": true,
+     "path": null,
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": true,
+     "path": null,
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": true,
+     "path": null,
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"\", \"exit_code\": -1, \"error\": \"BLOCKED: Command flagged as dangerous (recursive delete) but single-query mode (-q) runs without a user present to approve it. Find an alternative approach th"
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"\", \"exit_code\": -1, \"error\": \"BLOCKED: Command flagged as dangerous (find -delete) but single-query mode (-q) runs without a user present to approve it. Find an alternative approach that a"
+    },
+    {
+     "tool_name": "terminal",
+     "ok": true,
+     "path": null,
+     "error": null
+    }
+   ],
+   "subagents": [],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 4,
+    "plan_items": null
+   }
+  },
+  {
+   "name": "long_doc",
+   "prompt": "Read the file <hermes-agent README.md> and summarize it in 5 bullet points.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "S",
+    "task_type": "chat",
+    "tokens_p50": {
+     "input": 3976,
+     "cache_read": 35781,
+     "cache_write": 71398,
+     "output": 1213
+    },
+    "tokens_p90": {
+     "input": 11556,
+     "cache_read": 104004,
+     "cache_write": 75004,
+     "output": 2032
+    },
+    "per_call_units": {},
+    "est_steps": 1.6,
+    "est_steps_p90": 2.6,
+    "confidence": 0.33,
+    "basis": "rules: 1 path(s), effort medium; calibrated x0.78, P90 level 0.88 (n=5)",
+    "layer_used": "L1",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.2080281,
+    "cost_usd_p90": 0.2506969,
+    "shape": {
+     "start_prompt": 70042,
+     "growth": 3048.5,
+     "output_per_step": 773.5,
+     "cache_hit": 0.9,
+     "warm_cache": false,
+     "draft_p50": 144680,
+     "draft_p90": 301553
+    }
+   },
+   "actual": {
+    "input_tokens": 4,
+    "cache_read_tokens": 86501,
+    "cache_write_tokens": 54001,
+    "output_tokens": 732,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 140506,
+    "calls": 2,
+    "cost_usd": 0.15963070000000001,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 46349,
+     "output_tokens": 122,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66427,
+     "calls": 1,
+     "cost_usd": 0.1211117,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66425,
+     "cache_write_tokens": 7652,
+     "output_tokens": 610,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 74079,
+     "calls": 1,
+     "cost_usd": 0.038519,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "<hermes-agent README.md>",
+     "error": null
+    }
+   ],
+   "subagents": [],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 0,
+    "plan_items": null
+   }
+  },
+  {
+   "name": "delegated",
+   "prompt": "Use the delegate_task tool to run two subagents in parallel: one writes a haiku about caching to haiku1.txt in the current directory, the other writes a haiku about budgets to haiku2.txt. Then tell me both haikus.",
+   "outcome": "completed",
+   "estimate": {
+    "tier": "M",
+    "task_type": "delegated",
+    "tokens_p50": {
+     "input": 132031,
+     "cache_read": 1188277,
+     "cache_write": 265295,
+     "output": 26396
+    },
+    "tokens_p90": {
+     "input": 487775,
+     "cache_read": 4389976,
+     "cache_write": 453694,
+     "output": 62409
+    },
+    "per_call_units": {},
+    "est_steps": 6.7,
+    "est_steps_p90": 10.2,
+    "confidence": 0.34,
+    "basis": "rules: delegated keywords, 2 path(s), code identifier, effort medium, ~2 subagents; calibrated x0.82, P90 level 0.87 (n=6)",
+    "layer_used": "L1",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 1.4282199,
+    "cost_usd_p90": 3.6114461,
+    "shape": {
+     "start_prompt": 70053,
+     "growth": 3000.0,
+     "output_per_step": 1000.0,
+     "cache_hit": 0.9,
+     "warm_cache": false,
+     "subagents": {
+      "count_p50": 1.64,
+      "count_p90": 1.74,
+      "steps_p50": 8.0,
+      "steps_p90": 20.0,
+      "start_prompt": 52600,
+      "growth": 8000,
+      "output_per_step": 1500,
+      "cache_hit": 0.9
+     },
+     "draft_p50": 1966024,
+     "draft_p90": 12399060
+    }
+   },
+   "actual": {
+    "input_tokens": 12,
+    "cache_read_tokens": 191998,
+    "cache_write_tokens": 154698,
+    "output_tokens": 1740,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 346708,
+    "calls": 6,
+    "cost_usd": 0.44256860000000003,
+    "model": null
+   },
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 46337,
+     "output_tokens": 456,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 66415,
+     "calls": 1,
+     "cost_usd": 0.1244217,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 0,
+     "cache_write_tokens": 52754,
+     "output_tokens": 436,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 52756,
+     "calls": 1,
+     "cost_usd": 0.136249,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 0,
+     "cache_write_tokens": 52755,
+     "output_tokens": 477,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 52757,
+     "calls": 1,
+     "cost_usd": 0.1366615,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 52755,
+     "cache_write_tokens": 713,
+     "output_tokens": 134,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 53470,
+     "calls": 1,
+     "cost_usd": 0.0136775,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 52754,
+     "cache_write_tokens": 672,
+     "output_tokens": 127,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 53428,
+     "calls": 1,
+     "cost_usd": 0.0135048,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 66413,
+     "cache_write_tokens": 1467,
+     "output_tokens": 110,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 67882,
+     "calls": 1,
+     "cost_usd": 0.0180541,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "delegate_task",
+     "ok": true,
+     "path": null,
+     "error": null
+    },
+    {
+     "tool_name": "write_file",
+     "ok": true,
+     "path": "haiku1.txt",
+     "error": null
+    },
+    {
+     "tool_name": "write_file",
+     "ok": true,
+     "path": "haiku2.txt",
+     "error": null
+    }
+   ],
+   "subagents": [
+    {
+     "session_id": "20261106_150213_4f2a4e",
+     "role": "leaf",
+     "model": "claude-sonnet-5",
+     "usage": {
+      "input_tokens": 4,
+      "cache_read_tokens": 52754,
+      "cache_write_tokens": 53426,
+      "output_tokens": 563,
+      "reasoning_tokens": 0,
+      "prompt_tokens": 106184,
+      "calls": 2,
+      "cost_usd": 0.14975380000000002,
+      "model": null
+     },
+     "status": "completed"
+    },
+    {
+     "session_id": "20261106_150213_165fe3",
+     "role": "leaf",
+     "model": "claude-sonnet-5",
+     "usage": {
+      "input_tokens": 4,
+      "cache_read_tokens": 52755,
+      "cache_write_tokens": 53468,
+      "output_tokens": 611,
+      "reasoning_tokens": 0,
+      "prompt_tokens": 106227,
+      "calls": 2,
+      "cost_usd": 0.150339,
+      "model": null
+     },
+     "status": "completed"
+    }
+   ],
+   "features": {
+    "model": "claude-sonnet-5",
+    "context_tokens_now": 0,
+    "session_turns_so_far": 0,
+    "cwd_is_git_repo": true,
+    "reasoning_effort": "medium",
+    "tool_errors": 0,
+    "plan_items": null
+   }
+  }
+ ]
+}
