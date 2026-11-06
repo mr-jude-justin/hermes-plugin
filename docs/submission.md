@@ -24,7 +24,7 @@ repo: https://github.com/mr-jude-justin/hermes-plugin
 sha: <40-hex commit sha>
 subdir: plugin
 title: Cost Forecast
-description: "Quotes a task's cost before it runs and stops for your OK when it would go over budget. It estimates steps and tokens from rules, your own past tasks and calibration, prices each projected call from models.dev, then holds the turn for a quote above a threshold; mid-run it reforecasts after every model call, pauses at Hermes' approval gate at the soft cap and blocks at a hard per-task limit and daily cap that /yolo cannot skip. API-key users only. Disclosure — fetches public model prices from models.dev/api.json at most once a day in a background thread; stores daily spend, a finished-task history (features, tool names and file paths touched, token counts, costs, no message text) and hashed word counts in <HERMES_HOME>/plugin-data/cost-forecast/; holds a quoted request's text until it is answered or for 30 minutes; reads agent.reasoning_effort from Hermes config and checks whether the agent's working directory is a git repo; no credentials, telemetry, shell commands or self-updating."
+description: "Quotes a task's cost before it runs and stops for your OK when it would go over budget. It estimates steps and tokens from rules, your own past tasks and calibration, prices each projected call from models.dev, then holds the turn for a quote above a threshold; mid-run it reforecasts after every model call, pauses at Hermes' approval gate at the soft cap and blocks at a hard per-task limit and daily cap that /yolo cannot skip. API-key users only. Disclosure — fetches public model prices from models.dev/api.json at most once a day in a background thread; with the optional cheap-model estimate (l3_mode, off by default, needs llm.model_override) it sends the user's message to the user's own provider through ctx.llm in one short extra call; stores daily spend, a finished-task history (features, tool names and file paths touched, token counts, costs, no message text) and hashed word counts in <HERMES_HOME>/plugin-data/cost-forecast/; holds a quoted request's text until it is answered or for 30 minutes; reads agent.reasoning_effort from Hermes config and checks whether the agent's working directory is a git repo; no credentials, telemetry, shell commands or self-updating."
 maintainer: mr-jude-justin
 tier: community
 category: tools
@@ -59,10 +59,10 @@ Check `version` against `plugin/plugin.yaml` and `provides_hooks` against `HOOKS
 > - **After the task**: the real cost is recorded against the estimate, which feeds the next forecast.
 > - **Unattended runs** (cron, webhook, api_server) never get a quote, since nobody can answer. Only the hard limit and the daily cap apply.
 >
-> Surfaces: hooks only (`pre_llm_call`, `post_api_request`, `api_request_error`, `pre_tool_call`, `post_tool_call`, `subagent_start`, `subagent_stop`, `post_llm_call`, `on_session_end`), `ctx.register_command("forecast")`, `ctx.get_config`, `plugin_db` / `plugin_data_dir`. No tools, no middleware, no core overrides, no Python dependencies.
+> Surfaces: `capabilities: [llm.model_override]` (optional, for the cheap-model estimate), hooks (`pre_llm_call`, `post_api_request`, `api_request_error`, `pre_tool_call`, `post_tool_call`, `subagent_start`, `subagent_stop`, `post_llm_call`, `on_session_end`), `ctx.register_command("forecast")`, `ctx.get_config`, `plugin_db` / `plugin_data_dir`. No tools, no middleware, no core overrides, no Python dependencies.
 >
 > Disclosure (rule 13):
-> - Network: models.dev/api.json, at most daily, background thread.
+> - Network: models.dev/api.json, at most daily, background thread. Optional `l3_mode` (off by default) sends the user's message to the user's own provider through `ctx.llm` in one short cheap-model call; it declares and needs `llm.model_override`.
 > - Stored data: `<HERMES_HOME>/plugin-data/cost-forecast/`, containing daily spend, task history (no message text; tool names and file paths), hashed word counts, and a quoted request's text until it is answered or for up to 30 minutes.
 > - Reads: `agent.reasoning_effort` (via `hermes_cli.config.load_config_readonly`), and whether the working directory (via `agent.runtime_cwd.resolve_agent_cwd`) contains a `.git` folder.
 > - No credentials, no telemetry, no shell commands, no self-updating.
