@@ -85,6 +85,17 @@ TYPE_SHAPES: dict[str, TypeShape] = {
     "long_doc": TypeShape(growth=4_000, output=550, default_tier="M"),
 }
 
+# P90 must cover growth uncertainty too, not only more steps: a realistic
+# multi-file task had the exact step count but grew ~3.9k/step from real file
+# reads and went just over P90 (Justin's fresh-task test, 11/6).
+GROWTH_P90_MULT: float = 2.0
+# Mid-run the growth is observed, so the margin is smaller.
+REFORECAST_GROWTH_P90_MULT: float = 1.3
+# Inside a git repo, coding tasks read real files. The tiny per-step growth
+# seen on the 17-line toy repo does not carry over (fresh test: ~3.9k/step;
+# a two-file explain added ~11k in one step).
+REPO_GROWTH_FLOOR: dict[str, float] = {"agentic_coding": 2_000, "code_reasoning": 3_000}
+
 # Fraction of the reused prefix that is billed as a cache read. Real Hermes calls
 # after the first write only ~400 new tokens of a ~67k prompt: effective ~0.99.
 CACHE_HIT_ANTHROPIC: float = 0.98

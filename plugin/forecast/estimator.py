@@ -92,7 +92,8 @@ def projected_steps(estimate: Any, which: str = "p50") -> list[Tokens]:
     k = estimate.est_steps if which == "p50" else estimate.est_steps_p90
     # A reforecast's shape covers only the calls still to come.
     k = max(0.0, k - float(shape.get("steps_done", 0) or 0))
-    splits = step_splits(k, shape["start_prompt"], shape["growth"], shape["output_per_step"],
+    growth = shape.get("growth_p90", shape["growth"]) if which == "p90" else shape["growth"]
+    splits = step_splits(k, shape["start_prompt"], growth, shape["output_per_step"],
                          shape["cache_hit"], shape.get("warm_cache", False))
     sub = shape.get("subagents")
     if sub:
@@ -203,7 +204,8 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
 
     # Subagent segments from L1 (delegated tasks) sit on top of the main agent.
     l1main50 = project(r.steps_p50, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
-    l1main90 = project(r.steps_p90, r.start_prompt, r.growth, r.output_per_step, r.cache_hit, r.warm_cache)
+    l1main90 = project(r.steps_p90, r.start_prompt, r.growth * D.GROWTH_P90_MULT, r.output_per_step,
+                       r.cache_hit, r.warm_cache)
     extra50 = TokenSplit(*(max(0.0, a - m) for a, m in zip(_parts(r.tokens_p50), _parts(l1main50))))
     extra90 = TokenSplit(*(max(0.0, a - m) for a, m in zip(_parts(r.tokens_p90), _parts(l1main90))))
 
@@ -211,8 +213,9 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
     # spread from past coverage, by moving the step counts so that `shape` and
     # `projected_steps` (what the harness prices) stay consistent.
     args = (r.start_prompt, g, o, h, r.warm_cache)
+    args90 = (r.start_prompt, g * D.GROWTH_P90_MULT, o, h, r.warm_cache)  # P90 covers growth too
     draft50 = project(k50, *args).total + extra50.total
-    draft90 = project(k90, *args).total + extra90.total
+    draft90 = project(k90, *args90).total + extra90.total
     cal = idx.calibration() if idx is not None else None
     sub_scale = (1.0, 1.0)
     if cal is not None and cal.active:
@@ -225,14 +228,15 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
         main50, main90 = draft50 - extra50.total, draft90 - extra90.total
         extra50, extra90 = extra50.scaled(f50), extra90.scaled(f90)
         k50 = max(MIN_STEPS, _solve_steps(main50 * f50, *args))
-        k90 = max(k50 * 1.05, _solve_steps(main90 * f90, *args))
+        k90 = max(k50 * 1.05, _solve_steps(main90 * f90, *args90))
         sub_scale = (f50, f90)
         # layer_used keeps the contract's L1 | L2 | L3 values; calibration shows in basis.
         basis = f"{basis}; {cal.describe(task_type)}"
 
     p50 = project(k50, r.start_prompt, g, o, h, r.warm_cache) + extra50
-    p90 = project(k90, r.start_prompt, g, o, h, r.warm_cache) + extra90
+    p90 = project(k90, *args90) + extra90
     shape = _shape_dict(r, g, o, h)
+    shape["growth_p90"] = round(g * D.GROWTH_P90_MULT, 1)
     # Pre-calibration totals: calibration measures its bias against these, not
     # against its own output (otherwise the correction would undo itself).
     shape["draft_p50"] = round(draft50)

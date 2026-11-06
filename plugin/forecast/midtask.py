@@ -230,7 +230,7 @@ def reforecast_parts(features: Any, original: Any, spent: Any, steps_done: int,
     sigs += more
 
     rem50 = project(r50, l_next, g, o, h, warm_cache=True)
-    rem90 = project(r90, l_next, g, o, h, warm_cache=True)
+    rem90 = project(r90, l_next, g * D.REFORECAST_GROWTH_P90_MULT, o, h, warm_cache=True)
 
     sp = TokenSplit(_num(spent, "input_tokens"), _num(spent, "cache_read_tokens"),
                     _num(spent, "cache_write_tokens"), _num(spent, "output_tokens"))
@@ -256,6 +256,7 @@ def reforecast_parts(features: Any, original: Any, spent: Any, steps_done: int,
         "shape": {
             "start_prompt": round(l_next),
             "growth": round(g, 1),
+            "growth_p90": round(g * D.REFORECAST_GROWTH_P90_MULT, 1),
             "output_per_step": round(o, 1),
             "cache_hit": round(h, 4),
             "warm_cache": True,
