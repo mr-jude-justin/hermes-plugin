@@ -4,6 +4,7 @@ description: Quotes a task's cost before it runs and stops for your OK when it w
 author: Justin Zhuang, Eason Luo
 homepage: https://github.com/mr-jude-justin/hermes-plugin
 tags: [cost, budget, forecast]
+requires_hermes: ">=0.23.0"
 provides_hooks:
   - pre_llm_call
   - post_api_request
