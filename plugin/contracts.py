@@ -93,6 +93,13 @@ class Usage:
             model=model,
         )
 
+    @classmethod
+    def from_tokens(cls, t: Tokens, model: Optional[str] = None) -> Usage:
+        """One projected call, for pricing a forecast step with `PriceBook.cost_of`."""
+        i, r, w, o = (int(round(x)) for x in (t.input, t.cache_read, t.cache_write, t.output))
+        return cls(input_tokens=i, cache_read_tokens=r, cache_write_tokens=w, output_tokens=o,
+                   prompt_tokens=i + r + w, calls=1, model=model)
+
     @property
     def tokens(self) -> Tokens:
         return Tokens(self.input_tokens, self.cache_read_tokens, self.cache_write_tokens, self.output_tokens)
@@ -213,6 +220,10 @@ class Estimate:
     estimate_cost_usd: float = 0.0  # what producing this estimate cost (L3 calls)
     cost_usd_p50: Optional[float] = None
     cost_usd_p90: Optional[float] = None
+    # Per-step shape the forecaster used: {start_prompt, growth, output_per_step,
+    # cache_hit, warm_cache}. `forecast.projected_steps(estimate, which)` expands it into
+    # one Tokens per step so the harness can price each call at its context tier.
+    shape: Optional[dict[str, Any]] = None
 
 
 @dataclass

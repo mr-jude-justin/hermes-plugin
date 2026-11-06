@@ -70,3 +70,14 @@ def test_from_dict_ignores_unknown_fields():
     data = to_dict(Estimate(tier="M"))
     data["field_from_the_future"] = 1
     assert from_dict(Estimate, data).tier == "M"
+
+
+def test_usage_from_tokens_sets_prompt_size():
+    u = Usage.from_tokens(Tokens(input=10.4, cache_read=80_000, cache_write=900, output=300.6), model="m")
+    assert (u.input_tokens, u.output_tokens, u.prompt_tokens, u.calls) == (10, 301, 80_910, 1)
+
+
+def test_estimate_shape_round_trips():
+    e = Estimate(shape={"start_prompt": 68000, "growth": 1200, "output_per_step": 300,
+                        "cache_hit": 0.95, "warm_cache": False})
+    assert from_dict(Estimate, to_dict(e)) == e
