@@ -18,7 +18,7 @@
 | `record_outcome()`、`configure()`、`projected_steps()` | `estimator.py` | ✅ #25 |
 | `reforecast()`：跑到一半重新预测 | `midtask.py` | ✅ #29 |
 | 校准：偏差修正 + ACI 调整 P90 | `calibration.py` | ✅ #31 |
-| L3 便宜模型 | — | ❌ 未实现（第 7 节） |
+| L3 便宜模型 | `l3.py`（harness 侧：`harness/l3.py`） | ✅ #41 / #42（第 3.1 节） |
 | 用风险模型（hazard）预测剩余步数 | — | ⚠️ 暂用简化版代替（第 5 节） |
 | 按模型归一化 token | — | ❌ 未实现 |
 | 评估（`eval/`） | — | ⏸ 暂缓 |
@@ -32,8 +32,8 @@
 ```python
 from .forecast import configure, estimate, reforecast, record_outcome, projected_steps
 
-configure(state, history=None)        # register() 里调用一次。不读不写，第一次 estimate 时才读历史
-estimate(features) -> Estimate        # 开工前：L1 → L2（有相似历史时）→ 校准（有足够记录时）
+configure(state, history=None, llm=None, l3_mode="auto")  # register() 里调用一次。不读不写，第一次 estimate 时才读历史
+estimate(features) -> Estimate        # 开工前：L1 → L2（有相似历史时）→ L3（启用且没把握时）→ 校准（有足够记录时）
 reforecast(features, original, spent, steps_done, recent_steps) -> Estimate   # 每次 API 调用后
 record_outcome(features, estimate, actual, steps, outcome)                    # 每个任务结束时
 projected_steps(estimate, "p50" | "p90") -> list[Tokens]                      # 逐步展开，按每次调用计价
@@ -48,8 +48,8 @@ projected_steps(estimate, "p50" | "p90") -> list[Tokens]                      # 
 | `est_steps`、`est_steps_p90` | 算法 | 主 agent 的总步数（不含子 agent） |
 | `per_call_units` | 算法 | 例如 `{"image_gen": 3}` |
 | `confidence`、`basis` | 算法 | basis 例如 `"3 similar past tasks (top sim 0.67, weight 0.45) + rules: ...; calibrated x0.62, P90 level 0.91 (n=12)"` |
-| `layer_used` | 算法 | `"L1"`、`"L2"` 或 `"reforecast"`。校准不单独标层，只写在 basis 里 |
-| `estimate_cost_usd` | 算法 | 目前恒为 0（L1/L2 不调用模型） |
+| `layer_used` | 算法 | `"L1"`、`"L2"`、`"L3"` 或 `"reforecast"`。L3 只在没有 L2 近邻时才会标成 `"L3"`；校准不单独标层，只写在 basis 里 |
+| `estimate_cost_usd` | 算法 | L3 这次调用的花费（harness 已经算好价格传回来，再由它记进账本）；没调用 L3 时为 0 |
 | `cost_usd_p50`、`cost_usd_p90` | harness | 用 `projected_steps` 逐步计价 |
 | `shape` | 算法 | 见下 |
 
@@ -67,6 +67,7 @@ projected_steps(estimate, "p50" | "p90") -> list[Tokens]                      # 
 ```
 
 - `draft_p50/p90`：校准前的总量，只供 `record_outcome` 校准使用，harness 不用管。
+- `l3_steps`：L3 原始猜测的步数（只有 L3 运行过才有），记进 L2 记录，用来学习它低估了多少倍。
 - `steps_done`：只有 reforecast 的结果才有。有这个字段时，`shape` 和 `projected_steps` **只描述剩下的调用**，harness 按剩余步骤计价后再加上已花的钱（harness `core.py` 中的 `_reforecast` 已经这样实现）。
 - `subagents`：只有派子 agent 的任务才有。`projected_steps` 先列主 agent 的调用，再追加每个子 agent 的调用。
 
@@ -226,7 +227,7 @@ h 的冷启动值：模型名里含 claude/anthropic 时取 0.9（实测后续�
 **其他输出：**
 - **图片张数**：从 "3 张""三张""4 images" 这类说法里解析，默认 1 张，最多 50 张。
 - **子 agent 个数**：从 "3 个方向""5 subagents" 这类说法里解析；没写时默认 P50 为 2、P90 为 4。
-- **置信度**：L1 本身就弱，所以置信度最高只给到 0.45，由第一名和第二名的得分差决定。很短、而且没有任何信号的闲聊给 0.5。
+- **置信度**：L1 本身就弱，所以置信度最高只给到 0.45，由第一名和第二名的得分差决定。没有任何信号的消息：不到 10 token（如"你好"）给 0.5；更长的给 0.3，因为它可能是含义模糊的任务请求，交给 L3 判断。
 
 ---
 
@@ -249,6 +250,22 @@ L1：类型、档次、步数先验 K、形状 (g, o, h)、子 agent 段
 - **子 agent 段**：沿用 L1 算出的子 agent 部分，叠加在 L2 重算的主 agent 上。
 
 **未实现**：按模型做 token 归一化。TokenCast 中，同一任务在 Opus 和 GPT 上相差 1.05–1.8 倍。目前迁移的是步数和形状，可以部分抵消这种差异；但不同模型的步数本身也不一样，这一点还没有处理。
+
+### 3.1 L3 便宜模型（`l3.py`）
+
+- **调用条件**：harness 传进来的 `llm` 自带一个实时的 `.mode` 属性，每次调用都会读取，所以改了设置不用重启。
+  - `always`：每条非空消息都调用（用于 demo）。
+  - `auto`：只在 L2 没有近邻、并且 L1 置信度低于 0.4 时调用。很短的闲聊（不到 10 token）L1 置信度给 0.5，所以不会触发；稍长但没有任何信号的消息置信度只给 0.3，会交给 L3 判断。
+  - `off`，或者 `llm=None`：不调用。
+- **问什么**：让模型只返回 JSON，包括 task_type、tier、steps_p50、steps_p90、images。只问步数，不问 token。提示词里会说明"一步 = 一次模型调用"，并给出各档的典型步数；同时附上是否在 git 仓库里、仓库行数、所用模型。消息截断到 1500 字符。
+- **怎么合并**：
+  - 步数：先乘以学到的低估系数，再在 log 空间里以 0.3 的权重并入 P50。
+  - **它给的区间完全不用**，P90/P50 的比例沿用 L1/L2 草稿的值，因为论文显示模型自评的 90% 区间实际只覆盖 52.7%。
+  - 类型：只有 L1 置信度 ≤ 0.3 时，才采用 L3 判断的类型，每步形状 (g, o) 取两种类型的平均。
+  - 图片张数：类型是 generation、且 L3 给的张数比 L1 多时，用 L3 的。
+- **低估系数**：从记录中取"实际步数 / L3 步数"的 log 中位数，按 n/(n+5) 向先验 1.25 收缩。先验 1.25 是猜的：论文只说模型会系统性低估，没有给出具体幅度。
+- **失败处理**：没有 `llm`、harness 返回 `None`（没授权、当前 provider 没有便宜模型、出错、超过 4 秒），或者 JSON 解析失败，都直接沿用 L1/L2 的结果，不报错。
+- **隐私**：L3 会把用户的消息发给用户自己所用的 provider。harness 的 README 和提交说明里都已经写明。
 
 ---
 
@@ -344,7 +361,7 @@ L1：类型、档次、步数先验 K、形状 (g, o, h)、子 agent 段
 
 ## 7. 未做或暂缓的事
 
-- **L3 便宜模型**（未实现，待决定）。方案：只在 L1 置信度低、且 L2 找不到近邻时调用；让便宜模型返回 JSON 格式的步数和档次（不问 token）；在 log 空间里以约 0.3 的权重并入；单独学习它低估了多少倍；超过约 3 秒或出错时跳过。需要 harness 配合：在 `plugin.yaml` 声明调用 LLM 的权限、加配置开关和模型名、通过 `configure(..., llm=...)` 传入调用函数、为这次调用计价并填入 `estimate_cost_usd`。用户必须授权 `allow_model_override`，否则 Hermes 会用用户的主模型（比如 Opus），太贵。
+- **L3 的准确率**：L3 已经实现（第 3.1 节），但它是否真的能提升准确率，要等评估时再测。
 - **风险模型、完整的分层收缩、按模型归一化**：见第 3 节和 6.5 节。
 - **LightGBM 直接路径加组合路径，再加学习型修正**（TokenCast 全套）：要等积累到几百条以上的轨迹才值得做。依赖如果要加，就用 `lightgbm`，不引入 torch。
 - **调用级别的预测**（流式生成过程中的 In-call）：我们的产品不需要。
