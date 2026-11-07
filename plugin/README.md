@@ -35,11 +35,11 @@ How the estimate is built (rules, similar past tasks, calibration) is described 
 
 Every finished task is recorded with its estimate and its real cost. The plugin learns from these records in three ways:
 
-- **Similar past tasks.** For a new request, it finds the most similar tasks you have already run. It reuses how many model calls they really took and how large each call was. It reuses shapes, not dollar amounts, so the history still applies after you switch models. Text similarity uses hashed word counts; the message text itself is never stored.
-- **Calibration.** After 3 finished tasks, it measures how far its estimates run high or low for *you*, corrects for that, and widens or narrows the range so that about 9 in 10 tasks land under the high-end (P90) figure. The quote shows the result, for example "calibrated x0.54 (n=13)": your tasks have been costing about 54% of the default estimate.
+- **Similar past tasks.** For a new request, it finds the most similar tasks you have already run. It reuses how many model calls they really took and how large each call was. It reuses shapes, not dollar amounts, so most of the history still applies after you switch models (different models can take a different number of calls for the same task; that is not adjusted for yet). Text similarity uses hashed word and character counts; the message text itself is never stored.
+- **Calibration.** After 3 finished tasks, it measures how far its estimates run high or low for *you*, corrects for that, and widens or narrows the range so that about 9 in 10 tasks land under the high-end (P90) figure. The quote shows the result, for example "calibrated x0.54 (n=13)": over 13 finished tasks, yours have been costing about 54% of what the plugin would otherwise have estimated.
 - **The cheap model's bias.** If the cheap-model estimate is on (`l3_mode`), it learns how much that model tends to underestimate steps and corrects for it.
 
-During a task it also corrects itself live: after every model call, it re-estimates the remaining cost from how fast this task is actually growing.
+During a task it also corrects itself live: after every model call, it re-estimates the remaining cost from how fast this task is actually growing, how far through its to-do list it is, and whether it is stuck (repeated failures, re-editing the same file). A task that the budget stops counts only as a lower bound, so stopping never teaches the plugin to quote lower.
 
 In testing, a 30-file task was first quoted at $0.01–$0.02 and actually cost $0.053. After that one run, the same request was quoted at $0.011–$0.14.
 
