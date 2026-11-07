@@ -116,7 +116,9 @@ _TYPE_TOOLSETS: dict[str, tuple[str, ...]] = {
 
 _SCOPE_UP = _rx(
     r"整个|全部|所有|整套|从零|从头|端到端|完整|全面|大规模|全量|每个文件",
-    r"\b(entire|whole|from scratch|end[- ]to[- ]end|full|complete|everything)\b",
+    # Not "everything": "make sure everything passes" is about tests, not scope
+    # (fresh-task eval: a 7-call edit was read as XL / 60 steps).
+    r"\b(entire|whole|from scratch|end[- ]to[- ]end|full|complete)\b",
     r"\ball (the )?files\b|\bacross the (repo|codebase|project)\b",
 )
 _SCOPE_DOWN = _rx(

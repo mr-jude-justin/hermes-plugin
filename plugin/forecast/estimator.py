@@ -109,8 +109,15 @@ def projected_steps(estimate: Any, which: str = "p50") -> list[Tokens]:
 
 _ESTIMATE_FIELDS = {f.name for f in dataclasses.fields(Estimate)}
 
-# Every task makes at least one model call.
+# Every task makes at least one model call; a task that uses a tool (read a file,
+# run a command) makes at least two: the tool call and the answer. Calibration once
+# shrank a read-and-explain task to 1.3 steps (fresh-task eval).
 MIN_STEPS = 1.0
+NO_TOOL_TYPES = {"chat", "coding_chat", "generation"}
+
+
+def min_steps(task_type: str) -> float:
+    return 1.0 if task_type in NO_TOOL_TYPES else 2.0
 
 
 def _build(**kw: Any) -> Estimate:
@@ -233,6 +240,10 @@ def estimate(features: Any, state: Any = None, llm: Any = None, l3_mode: Optiona
         # layer_used keeps the contract's L1 | L2 | L3 values; calibration shows in basis.
         basis = f"{basis}; {cal.describe(task_type)}"
 
+    # Structural floors, after L2 / L3 / calibration: tool-using tasks need >= 2
+    # calls, and P90 allows at least one more call than P50.
+    k50 = max(k50, min_steps(task_type))
+    k90 = max(k90, k50 + 1.0)
     p50 = project(k50, r.start_prompt, g, o, h, r.warm_cache) + extra50
     p90 = project(k90, *args90) + extra90
     shape = _shape_dict(r, g, o, h)
