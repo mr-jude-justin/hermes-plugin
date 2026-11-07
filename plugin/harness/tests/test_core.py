@@ -235,3 +235,13 @@ def test_small_amounts_display():
 def test_l3_mode_is_normalized(raw, mode):
     s = Settings.from_getter(lambda key, default=None: raw if key == "l3_mode" else default)
     assert s.l3_mode == mode
+
+
+def test_projected_total_is_recorded_after_every_call(tmp_path):
+    h, store, _ = make(tmp_path, estimate_usd=0.1, steps=3)
+    h.pre_llm_call(session_id="s", user_message="hi", model="m")
+    call(h, "s", 0.05)
+    call(h, "s", 0.05)
+    h.post_llm_call(session_id="s")
+    (task,) = store.load()
+    assert len(task.features.projected_usd) == 2 and all(p >= 0.05 for p in task.features.projected_usd)

@@ -303,6 +303,9 @@ class Harness:
                         child.usage = child.usage + u
                         child.model = model or child.model
         run.projected = self._reforecast(run, model, provider)
+        with self._lock:
+            run.features.projected_usd.append(round(run.projected, 6))
+        log.debug("cost-forecast %s call %d: spent %.4f projected %.4f", run.id, run.steps, run.spent, run.projected)
 
     def _reforecast(self, run: Run, model: str, provider: str) -> float:
         fn = getattr(self.forecast, "reforecast", None)
