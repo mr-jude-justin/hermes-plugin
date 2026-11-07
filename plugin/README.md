@@ -78,6 +78,32 @@ The cheap-model estimate needs the **model override** permission, which Hermes a
 
 Type `/forecast` in any chat to see today's spend and the current task's spend, projection and limits.
 
+## How accurate is it
+
+These are real API costs from fresh tasks the plugin had not seen before. They ran on Claude Sonnet 5, each in a new Hermes session and its own clone of this repository. The plugin's history already held about a dozen earlier runs, so this is roughly a user who has run a few tasks. "Likely" is the median estimate (P50); "high end" is the P90.
+
+| Task | Quote: likely | Quote: high end | Actual | Calls |
+|---|---|---|---|---|
+| Explain how a "cap $8" reply is handled (read 2 files) | $0.24 | $0.34 | $0.23 | 2 |
+| Add a test and run the test suite | $0.22 | $0.31 | $0.18 | 4 |
+| Add a zh/en language setting across 3 files, with tests | $0.36 | $0.56 | **$0.56** | 12 |
+| Explain how unknown providers are priced (read 1 file) | $0.14 | $0.17 | **$0.20** | 2 |
+| Add Spanish reply words, with tests | $0.72 | $1.74 | $0.24 | 7 |
+| Add a quote-expiry setting across 4 files, with tests | $0.46 | $0.83 | $0.64 | 21 |
+
+Rows 1–3 used the forecaster before its last update; rows 4–6 used the current one.
+
+**What this shows:**
+
+- On 4 of the 6 tasks, the actual cost was within 1.5x of the likely figure.
+- On 4 of the 6, it stayed under the high-end figure. The two misses were by $0.005 and $0.04.
+- The biggest miss in the other direction was the Spanish-words task: quoted 3x too high, because it was sized like a much larger job.
+- These are small samples, and individual runs vary a lot. Research on coding agents finds the same task can use up to 30x more tokens from one run to the next. That's why the plugin quotes a range and keeps checking as the task runs.
+
+**During a task the estimate corrects itself.** On the quote-expiry task, the projected total after each model call was $0.40, $0.59, $0.54, … $0.57, $0.63, $0.71, against a final cost of $0.64. After the second call it stayed within about 30% of the real cost, which is what the budget stops act on.
+
+The raw per-call data is in [`eval/live/`](../eval/live/).
+
 ## Using it with hermes-telemetry
 
 [hermes-telemetry](https://github.com/nujovich/hermes-telemetry) reports what you have already spent. This plugin estimates what a task will cost. The two work together: we tested both installed on Hermes 0.23.0, and quotes, approvals and both plugins' commands all worked side by side.
