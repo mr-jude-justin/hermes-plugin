@@ -201,6 +201,8 @@ class TaskFeatures:
     no_progress_calls: int = 0  # consecutive
     plan_items: Optional[PlanItems] = None
     subagents: list[SubagentUsage] = field(default_factory=list)
+    # The harness's projected total cost (USD) after each model call, for evaluating reforecast.
+    projected_usd: list[float] = field(default_factory=list)
 
 
 @dataclass
