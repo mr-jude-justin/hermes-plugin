@@ -309,6 +309,10 @@ def classify(features: Any) -> L1Result:
 
     # Shape: blend g and o over the candidate types.
     growth = sum(w * D.TYPE_SHAPES[t].growth for t, w in weights.items())
+    floor = D.REPO_GROWTH_FLOOR.get(task_type)
+    if floor and get(features, "cwd_is_git_repo", False) and growth < floor:
+        growth = floor
+        sigs.append("repo reads")
     output = sum(w * D.TYPE_SHAPES[t].output for t, w in weights.items())
     effort = str(get(features, "reasoning_effort", "") or "").lower()
     if effort in D.EFFORT_OUTPUT_MULT:
@@ -326,7 +330,7 @@ def classify(features: Any) -> L1Result:
         warm = float(D.SHARED_PREFIX_TOKENS) if cache_hit > 0 else False
 
     tokens_p50 = project(k50, start_prompt, growth, output, cache_hit, warm)
-    tokens_p90 = project(k90, start_prompt, growth, output, cache_hit, warm)
+    tokens_p90 = project(k90, start_prompt, growth * D.GROWTH_P90_MULT, output, cache_hit, warm)
 
     # Delegated work: each subagent is its own segment that starts at its own
     # floor with a cold cache (DESIGN.md 6.5 item 4).
