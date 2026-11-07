@@ -256,6 +256,13 @@ def _subagent_counts(msg: str) -> tuple[float, float]:
     return D.SUBAGENTS_DEFAULT
 
 
+def p90_warm(warm: "bool | float") -> "bool | float":
+    """P90 assumes the shared cross-session prefix may have expired: a new
+    session's first call can be fully cold (fresh-task eval: the first task of a
+    batch paid $0.17 with no cache read). A later turn of a session stays warm."""
+    return True if warm is True else False
+
+
 def classify(features: Any) -> L1Result:
     """Run the L1 rules on one task's features."""
     msg = message_of(features)
@@ -332,7 +339,7 @@ def classify(features: Any) -> L1Result:
         warm = float(D.SHARED_PREFIX_TOKENS) if cache_hit > 0 else False
 
     tokens_p50 = project(k50, start_prompt, growth, output, cache_hit, warm)
-    tokens_p90 = project(k90, start_prompt, growth * D.GROWTH_P90_MULT, output, cache_hit, warm)
+    tokens_p90 = project(k90, start_prompt, growth * D.GROWTH_P90_MULT, output, cache_hit, p90_warm(warm))
 
     # Delegated work: each subagent is its own segment that starts at its own
     # floor with a cold cache (DESIGN.md 6.5 item 4).

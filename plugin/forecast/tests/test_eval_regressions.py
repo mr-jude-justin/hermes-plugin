@@ -123,3 +123,14 @@ def test_chat_can_still_be_one_step():
         e = estimate(f, state=st)
         record_outcome(f, e, usage_with_total(e.tokens_p50.total * 0.3), 1, state=st)
     assert estimate(TaskFeatures(message="hey", model="claude-sonnet-5"), state=st).est_steps < 2.0
+
+
+def test_p90_assumes_a_cold_first_call_for_new_sessions():
+    """Real: explain_pricing was the first task of a batch; its first call had no cache read ($0.17)."""
+    new = estimate(TaskFeatures(message="hi there", model="claude-sonnet-5", context_tokens_now=65_000))
+    assert new.shape["warm_cache"] == 20_000 and new.shape["warm_cache_p90"] is False
+    first50, first90 = projected_steps(new, "p50")[0], projected_steps(new, "p90")[0]
+    assert first90.cache_read == 0 and first50.cache_read > 0
+    later = estimate(TaskFeatures(message="hi there", model="claude-sonnet-5", context_tokens_now=65_000,
+                                  session_turns_so_far=3))
+    assert later.shape["warm_cache"] is True and later.shape["warm_cache_p90"] is True
