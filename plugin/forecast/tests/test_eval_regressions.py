@@ -77,3 +77,60 @@ def test_calibration_scales_subagents_too_and_keeps_steps_sane():
     assert e.tokens_p90.total / e.tokens_p50.total > 1.25
     for which, tot in (("p50", e.tokens_p50.total), ("p90", e.tokens_p90.total)):
         assert sum(t.total for t in projected_steps(e, which)) == pytest.approx(tot, rel=0.03)
+
+
+# --- Fresh-task eval, 2026-11-07 (eval/live/2026-11-07-fresh-tasks.json), exact prompts ---
+
+SPANISH = ('In plugin/harness/replies.py, add the Spanish approval words "sí" and "continuar" and the cancel '
+           'word "cancelar". Add tests for them in plugin/harness/tests/test_replies.py, then run '
+           '`uvx pytest -q plugin/harness/tests` and make sure everything passes.')
+
+
+def test_everything_passes_is_not_broad_scope_and_command_paths_are_not_files():
+    # Real: 7 calls. L1 used to read it as XL / 60 steps.
+    r = classify(feat(SPANISH, repo=True))
+    assert r.task_type == "agentic_coding" and r.tier == "M"
+    assert "broad scope" not in r.signals and "many files" not in r.signals
+    assert "2 path(s)" in r.signals  # replies.py + test_replies.py; not the dir inside `uvx pytest ...`
+
+
+def test_paths_inside_code_are_not_counted():
+    from forecast.features import count_paths
+    assert count_paths("edit src/a.py, then run `pytest tests/unit` and ```\ncat docs/x.md\n```") == 1
+
+
+def test_tool_using_task_never_drops_below_two_steps():
+    """Real: explain_pricing read pricing.py and answered (2 calls); calibration had shrunk it to 1.3."""
+    st = MemState()
+    for m in ["explain how cost_of works in plugin/pricing.py", "explain the parser in src/parse.py",
+              "read src/cli.py and explain the flags", "explain what store.py does"]:
+        f = TaskFeatures(message=m, model="claude-sonnet-5", context_tokens_now=65_000, cwd_is_git_repo=True)
+        e = estimate(f, state=st)
+        record_outcome(f, e, usage_with_total(e.tokens_p50.total * 0.2), 2, state=st)  # pushes calibration down hard
+    e = estimate(TaskFeatures(message="Explain how unknown providers are priced in plugin/pricing.py",
+                              model="claude-sonnet-5", context_tokens_now=65_000, cwd_is_git_repo=True), state=st)
+    assert "calibrated" in e.basis
+    assert e.est_steps >= 2.0
+    assert e.est_steps_p90 >= e.est_steps + 1.0
+    for which, tot in (("p50", e.tokens_p50.total), ("p90", e.tokens_p90.total)):
+        assert sum(t.total for t in projected_steps(e, which)) == pytest.approx(tot, rel=0.03)
+
+
+def test_chat_can_still_be_one_step():
+    st = MemState()
+    for m in ["hi", "hello there", "thanks!", "good morning"]:
+        f = TaskFeatures(message=m, model="claude-sonnet-5", context_tokens_now=65_000)
+        e = estimate(f, state=st)
+        record_outcome(f, e, usage_with_total(e.tokens_p50.total * 0.3), 1, state=st)
+    assert estimate(TaskFeatures(message="hey", model="claude-sonnet-5"), state=st).est_steps < 2.0
+
+
+def test_p90_assumes_a_cold_first_call_for_new_sessions():
+    """Real: explain_pricing was the first task of a batch; its first call had no cache read ($0.17)."""
+    new = estimate(TaskFeatures(message="hi there", model="claude-sonnet-5", context_tokens_now=65_000))
+    assert new.shape["warm_cache"] == 20_000 and new.shape["warm_cache_p90"] is False
+    first50, first90 = projected_steps(new, "p50")[0], projected_steps(new, "p90")[0]
+    assert first90.cache_read == 0 and first50.cache_read > 0
+    later = estimate(TaskFeatures(message="hi there", model="claude-sonnet-5", context_tokens_now=65_000,
+                                  session_turns_so_far=3))
+    assert later.shape["warm_cache"] is True and later.shape["warm_cache_p90"] is True

@@ -62,8 +62,17 @@ def count_urls(text: str) -> int:
     return len(_URL.findall(text))
 
 
+_FENCED = re.compile(r"```.*?```|~~~.*?~~~", re.DOTALL)
+_INLINE_CODE = re.compile(r"`[^`\n]*`")
+
+
 def count_paths(text: str) -> int:
+    """Distinct file-like paths the message mentions, ignoring URLs and anything
+    inside backticks or code fences: a path in `uvx pytest -q plugin/tests` is a
+    command to run, not a file to change (fresh-task eval)."""
     stripped = _URL.sub(" ", text)
+    stripped = _FENCED.sub(" ", stripped)
+    stripped = _INLINE_CODE.sub(" ", stripped)
     return len(set(_PATH.findall(stripped)))
 
 
