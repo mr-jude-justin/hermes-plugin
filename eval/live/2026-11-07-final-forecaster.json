@@ -1,0 +1,570 @@
+{
+ "hermes": "v0.23.0",
+ "provider": "anthropic",
+ "model": "claude-sonnet-5",
+ "forecaster": "main @ 95e810e (#72, final before freeze)",
+ "setup": "fresh tasks, one new hermes session each, each in its own clone of this repository; history held 16 earlier runs",
+ "runs": [
+  {
+   "name": "explain_unattended",
+   "prompt": "Read plugin/harness/collect.py and plugin/harness/core.py and explain which runs count as unattended and what the plugin does differently for them. Do not change any files.",
+   "estimate": {
+    "tier": "M",
+    "task_type": "code_reasoning",
+    "tokens_p50": {
+     "input": 3603,
+     "cache_read": 247624,
+     "cache_write": 60508,
+     "output": 1607
+    },
+    "tokens_p90": {
+     "input": 6433,
+     "cache_read": 442128,
+     "cache_write": 105450,
+     "output": 2450
+    },
+    "per_call_units": {},
+    "est_steps": 4.1,
+    "est_steps_p90": 6.3,
+    "confidence": 0.39,
+    "basis": "3 similar past tasks (top sim 0.36, weight 0.28) + rules: 2 path(s), code_reasoning keywords, repo reads, effort medium; calibrated x0.75, P90 level 0.87 (n=16)",
+    "layer_used": "L2",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.22285159999999998,
+    "cost_usd_p90": 0.3889303,
+    "shape": {
+     "start_prompt": 70043,
+     "growth": 3331.6,
+     "output_per_step": 388.0,
+     "cache_hit": 0.9857,
+     "warm_cache": 20000.0,
+     "growth_p90": 6663.2,
+     "warm_cache_p90": false,
+     "draft_p50": 419338,
+     "draft_p90": 946305
+    }
+   },
+   "actual": {
+    "input_tokens": 4,
+    "cache_read_tokens": 68131,
+    "cache_write_tokens": 80186,
+    "output_tokens": 1383,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 148321,
+    "calls": 2,
+    "cost_usd": 0.2279292,
+    "model": null
+   },
+   "projected_usd": [
+    0.34315,
+    0.296895
+   ],
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 0,
+     "cache_write_tokens": 68131,
+     "output_tokens": 120,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 68133,
+     "calls": 1,
+     "cost_usd": 0.1715315,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 68131,
+     "cache_write_tokens": 12055,
+     "output_tokens": 1263,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 80188,
+     "calls": 1,
+     "cost_usd": 0.056397699999999995,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/core.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/collect.py",
+     "error": null
+    }
+   ]
+  },
+  {
+   "name": "cancel_text",
+   "prompt": "In plugin/harness/messages.py, change the cancelled() message so it also says \"Send your request again to get a new quote.\" Update any test that checks this text, then run `uvx pytest -q plugin/harness/tests` and make sure everything passes.",
+   "estimate": {
+    "tier": "M",
+    "task_type": "agentic_coding",
+    "tokens_p50": {
+     "input": 4088,
+     "cache_read": 315196,
+     "cache_write": 56756,
+     "output": 1558
+    },
+    "tokens_p90": {
+     "input": 9109,
+     "cache_read": 702291,
+     "cache_write": 98090,
+     "output": 2928
+    },
+    "per_call_units": {},
+    "est_steps": 5.1,
+    "est_steps_p90": 9.6,
+    "confidence": 0.43,
+    "basis": "4 similar past tasks (top sim 0.38, weight 0.36) + rules: 1 path(s), code identifier, repo reads, effort medium; calibrated x0.65, P90 level 0.86 (n=17)",
+    "layer_used": "L2",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.2281422,
+    "cost_usd_p90": 0.4323349,
+    "shape": {
+     "start_prompt": 70060,
+     "growth": 1624.3,
+     "output_per_step": 304.1,
+     "cache_hit": 0.9872,
+     "warm_cache": 20000.0,
+     "growth_p90": 3248.6,
+     "warm_cache_p90": false,
+     "draft_p50": 577532,
+     "draft_p90": 2114941
+    }
+   },
+   "actual": {
+    "input_tokens": 10,
+    "cache_read_tokens": 296386,
+    "cache_write_tokens": 50507,
+    "output_tokens": 797,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 346903,
+    "calls": 5,
+    "cost_usd": 0.1935347,
+    "model": null
+   },
+   "projected_usd": [
+    0.209153,
+    0.205097,
+    0.22826,
+    0.250107,
+    0.228562
+   ],
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 48079,
+     "output_tokens": 171,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 68157,
+     "calls": 1,
+     "cost_usd": 0.1259267,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 68155,
+     "cache_write_tokens": 449,
+     "output_tokens": 185,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 68606,
+     "calls": 1,
+     "cost_usd": 0.0166075,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 68604,
+     "cache_write_tokens": 761,
+     "output_tokens": 191,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 69367,
+     "calls": 1,
+     "cost_usd": 0.017537300000000002,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 69365,
+     "cache_write_tokens": 821,
+     "output_tokens": 206,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 70188,
+     "calls": 1,
+     "cost_usd": 0.0179895,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 70186,
+     "cache_write_tokens": 397,
+     "output_tokens": 44,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 70585,
+     "calls": 1,
+     "cost_usd": 0.0154737,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin/harness/messages.py",
+     "error": null
+    },
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin/harness",
+     "error": null
+    },
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin/harness/tests",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/messages.py",
+     "error": null
+    },
+    {
+     "tool_name": "patch",
+     "ok": true,
+     "path": "plugin/harness/messages.py",
+     "error": null
+    },
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin",
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"........................................................................ [ 93%]\\n.....                                                                    [100%]\\n77 passed in 0.20s\", \"exit"
+    }
+   ]
+  },
+  {
+   "name": "forecast_history",
+   "prompt": "Make the /forecast command accept an optional argument `history` that lists the last 5 finished tasks (date, outcome, quoted P50 and actual cost). Implement it in plugin/harness/core.py using Store.load(), add tests, and run `uvx pytest -q plugin` until all tests pass.",
+   "estimate": {
+    "tier": "M",
+    "task_type": "agentic_coding",
+    "tokens_p50": {
+     "input": 7325,
+     "cache_read": 437070,
+     "cache_write": 61933,
+     "output": 1420
+    },
+    "tokens_p90": {
+     "input": 13780,
+     "cache_read": 822245,
+     "cache_write": 109928,
+     "output": 2240
+    },
+    "per_call_units": {},
+    "est_steps": 6.7,
+    "est_steps_p90": 10.5,
+    "confidence": 0.38,
+    "basis": "2 similar past tasks (top sim 0.22, weight 0.18) + rules: agentic_coding keywords, 2 path(s), code identifier, repo reads, effort medium; calibrated x0.68, P90 level 0.86 (n=18)",
+    "layer_used": "L2",
+    "estimate_cost_usd": 0.0,
+    "cost_usd_p50": 0.2721342,
+    "cost_usd_p90": 0.4889598,
+    "shape": {
+     "start_prompt": 70067,
+     "growth": 2095.6,
+     "output_per_step": 213.2,
+     "cache_hit": 0.9835,
+     "warm_cache": 20000.0,
+     "growth_p90": 4191.1,
+     "warm_cache_p90": false,
+     "draft_p50": 750486,
+     "draft_p90": 1941033
+    }
+   },
+   "actual": {
+    "input_tokens": 24,
+    "cache_read_tokens": 932147,
+    "cache_write_tokens": 75633,
+    "output_tokens": 5985,
+    "reasoning_tokens": 0,
+    "prompt_tokens": 1007804,
+    "calls": 12,
+    "cost_usd": 0.43540989999999996,
+    "model": null
+   },
+   "projected_usd": [
+    0.252038,
+    0.252896,
+    0.281977,
+    0.292236,
+    0.319274,
+    0.369656,
+    0.400411,
+    0.432456,
+    0.478203,
+    0.517332,
+    0.511863,
+    0.511926
+   ],
+   "step_usages": [
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 20076,
+     "cache_write_tokens": 48099,
+     "output_tokens": 359,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 68177,
+     "calls": 1,
+     "cost_usd": 0.1278567,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 68175,
+     "cache_write_tokens": 1710,
+     "output_tokens": 211,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 69887,
+     "calls": 1,
+     "cost_usd": 0.020024,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 69885,
+     "cache_write_tokens": 3593,
+     "output_tokens": 225,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 73480,
+     "calls": 1,
+     "cost_usd": 0.0252135,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 73478,
+     "cache_write_tokens": 1642,
+     "output_tokens": 324,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 75122,
+     "calls": 1,
+     "cost_usd": 0.022044599999999998,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 75120,
+     "cache_write_tokens": 5007,
+     "output_tokens": 304,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 80129,
+     "calls": 1,
+     "cost_usd": 0.0305855,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 80127,
+     "cache_write_tokens": 5686,
+     "output_tokens": 1099,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 85815,
+     "calls": 1,
+     "cost_usd": 0.041234400000000004,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 85813,
+     "cache_write_tokens": 1955,
+     "output_tokens": 1265,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 87770,
+     "calls": 1,
+     "cost_usd": 0.03470410000000001,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 87768,
+     "cache_write_tokens": 2370,
+     "output_tokens": 120,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 90140,
+     "calls": 1,
+     "cost_usd": 0.024682600000000002,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 90138,
+     "cache_write_tokens": 1590,
+     "output_tokens": 1059,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 91730,
+     "calls": 1,
+     "cost_usd": 0.0325966,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 91728,
+     "cache_write_tokens": 2647,
+     "output_tokens": 514,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 94377,
+     "calls": 1,
+     "cost_usd": 0.0301071,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 94375,
+     "cache_write_tokens": 1089,
+     "output_tokens": 170,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 95466,
+     "calls": 1,
+     "cost_usd": 0.0233015,
+     "model": "claude-sonnet-5"
+    },
+    {
+     "input_tokens": 2,
+     "cache_read_tokens": 95464,
+     "cache_write_tokens": 245,
+     "output_tokens": 335,
+     "reasoning_tokens": 0,
+     "prompt_tokens": 95711,
+     "calls": 1,
+     "cost_usd": 0.023059299999999998,
+     "model": "claude-sonnet-5"
+    }
+   ],
+   "step_tools": [
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin/harness/core.py",
+     "error": null
+    },
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/core.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/store.py",
+     "error": null
+    },
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin",
+     "error": null
+    },
+    {
+     "tool_name": "search_files",
+     "ok": true,
+     "path": "plugin/contracts.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/tests/test_core.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/contracts.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/__init__.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/contracts.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/messages.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/tests/test_core.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/core.py",
+     "error": null
+    },
+    {
+     "tool_name": "patch",
+     "ok": true,
+     "path": "plugin/harness/core.py",
+     "error": null
+    },
+    {
+     "tool_name": "read_file",
+     "ok": true,
+     "path": "plugin/harness/tests/test_core.py",
+     "error": null
+    },
+    {
+     "tool_name": "patch",
+     "ok": true,
+     "path": "plugin/harness/tests/test_core.py",
+     "error": null
+    },
+    {
+     "tool_name": "patch",
+     "ok": true,
+     "path": "plugin/harness/tests/test_core.py",
+     "error": null
+    },
+    {
+     "tool_name": "terminal",
+     "ok": false,
+     "path": null,
+     "error": "{\"output\": \"........................................................................ [ 34%]\\n........................................................................ [ 69%]\\n.........................."
+    }
+   ]
+  }
+ ]
+}
