@@ -78,6 +78,14 @@ The cheap-model estimate needs the **model override** permission, which Hermes a
 
 Type `/forecast` in any chat to see today's spend and the current task's spend, projection and limits.
 
+## Using it with hermes-telemetry
+
+[hermes-telemetry](https://github.com/nujovich/hermes-telemetry) reports what you have already spent. This plugin estimates what a task will cost. The two work together: we tested both installed on Hermes 0.23.0, and quotes, approvals and both plugins' commands all worked side by side.
+
+- **Commands:** `/budget` and `/stats` belong to hermes-telemetry; `/forecast` belongs to this plugin.
+- **Two daily limits:** hermes-telemetry ships with its own global budget ($5 a day in `enforce` mode), separate from this plugin's `daily_cap_usd` ($20). Whichever is lower stops tasks first. Raise one or turn one off so you have a single daily limit.
+- **Totals can differ:** each plugin prices calls from its own price table. In our test, the per-call costs matched except for the first call of a session, where the two plugins priced the cache write differently.
+
 ## Install
 
 From the plugin catalog, once it is listed:
