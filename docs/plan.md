@@ -258,8 +258,8 @@
 
 - ~~用订阅的用户（比如 Codex 订阅）在乎的是额度，不是美元，要不要兼顾？~~ 已定（11/6）：不兼顾，只服务 API 用户，原因见第 1 节。
 - 估价不准的时候，怎么让用户还愿意信它？比如展示"上次预估 $2，实际 $2.4"
-- 子 agent 和委派出去的任务，费用要怎么算进来？
-- 和 hermes-telemetry 是直接读它的数据，还是各自记账？
+- ~~子 agent 和委派出去的任务，费用要怎么算进来？~~ 已定：`post_api_request` 按子会话 id 记到父任务上（`subagent_start` / `subagent_stop`）。
+- ~~和 hermes-telemetry 是直接读它的数据，还是各自记账？~~ 已定：各自记账。两个插件一起装测过，见 `plugin/README.md` 的 "Using it with hermes-telemetry"。
 
 ---
 
