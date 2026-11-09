@@ -17,4 +17,4 @@ Built for the Hermes Agent Plugin Hackathon (Nous Research).
 - `AGENTS.md`: team rules and who owns which files
 - `tools/board`: the team message board script (not part of the plugin)
 
-Run the tests with `uvx pytest plugin` and check the plugin with `hermes plugins validate plugin/`.
+Run the tests with `uvx pytest plugin` and check the plugin the way the catalog CI does with `hermes plugins validate plugin/ --install-deps`.

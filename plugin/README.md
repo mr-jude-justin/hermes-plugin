@@ -14,6 +14,8 @@ You:     continue
 Hermes:  (starts working)
 ```
 
+*This shows the format; the numbers are made up. Quotes and costs from real runs are under [How accurate is it](#how-accurate-is-it).*
+
 Small tasks, like a chat question, get no quote and no delay.
 
 > **API-key users only.** See [Who it is for](#who-it-is-for-api-key-users-only) and the [risk notice](#risk-notice-do-not-run-hermes-on-a-claude-subscription) before installing.
