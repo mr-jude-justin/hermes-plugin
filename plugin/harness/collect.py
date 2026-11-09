@@ -6,6 +6,7 @@ a helper costs us one feature, never the hook.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -98,6 +99,12 @@ def plan_items(args: Any, previous: Optional[PlanItems]) -> Optional[PlanItems]:
 
 
 def tool_failed(result: Any) -> bool:
-    text = result if isinstance(result, str) else str(result)
+    if isinstance(result, str):
+        text = result
+    else:
+        try:
+            text = json.dumps(result, default=str)
+        except (TypeError, ValueError):
+            text = str(result)
     head = text[:300].lower()
     return head.startswith(("error", "blocked", "[cost-forecast]")) or '"error"' in head or "traceback" in head
